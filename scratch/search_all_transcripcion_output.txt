@@ -1,0 +1,51 @@
+Line 2097: <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+  [2092]:                         animation: 'fadeIn 0.3s ease-out'
+  [2093]:                     }}>
+  [2094]:                         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#f8fafc' }}>
+  [2095]:                             <div>
+  [2096]:                                 <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+  [2097]:                                     <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+  [2098]:                                 </h2>
+  [2099]:                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+  [2100]:                                     <span className="badge badge-blue">Cajero: {selectedRecording.cajero}</span>
+  [2101]:                                     <span className="badge badge-orange">Duración: {selectedRecording.duracion}</span>
+  [2102]:                                     <span className="badge badge-green">Caja: {selectedRecording.caja}</span>
+  [2103]:                                 </div>
+  [2104]:                             </div>
+  [2105]:                             <button
+  [2106]:                                 onClick={() => setSelectedRecording(null)}
+  [2107]:                                 className="icon-btn"
+  [2108]:                                 style={{ background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+  [2109]:                                 title="Cerrar"
+  [2110]:                             >
+  [2111]:                                 ✕
+  [2112]:                             </button>
+  [2113]:                         </div>
+  [2114]: 
+  [2115]:                         <div className="transcription-body" style={{
+  [2116]:                             fontSize: '0.95rem', lineHeight: '1.6',
+  [2117]:                             padding: '2rem', flexGrow: 1, overflowY: 'auto',
+  [2118]:                             backgroundColor: 'white'
+  [2119]:                         }}>
+  [2120]:                             {isTranscriptionLoading ? (
+  [2121]:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+  [2122]:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+  [2123]:                                     Cargando transcripción...
+  [2124]:                                 </div>
+  [2125]:                             ) : transcriptionError ? (
+  [2126]:                                 <div style={{ textAlign: 'center', padding: '3rem', color: '#ef4444' }}>
+  [2127]:                                     <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⚠️</div>
+  [2128]:                                     <p style={{ fontWeight: '600', margin: '0 0 0.5rem 0' }}>Error al cargar la transcripción</p>
+  [2129]:                                     <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{transcriptionError}</p>
+  [2130]:                                 </div>
+  [2131]:                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos && transcriptionData[0].segmentos.length > 0 ? (
+  [2132]:                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+  [2133]:                                     {[...transcriptionData[0].segmentos].sort((a, b) => Number(a.inicio_segundo) - Number(b.inicio_segundo)).map((segmento, idx) => {
+  [2134]:                                         const isCajero = segmento.rol_inferido === 'Cajero' || (segmento.rol_inferido !== 'Usuario' && segmento.hablante === 'SPEAKER_00');
+  [2135]:                                         return (
+  [2136]:                                             <div key={idx} style={{
+  [2137]:                                                 display: 'flex',
+  [2138]:                                                 alignItems: 'baseline',
+  [2139]:                                                 gap: '1rem',
+  [2140]:                                                 padding: '0.5rem 0.5rem',
+  [2141]:                                                 borderBottom: '1px solid #f8fafc',

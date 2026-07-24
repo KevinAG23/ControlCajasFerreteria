@@ -1,0 +1,23 @@
+private readonly IndicatorWindow _indicator;
+public AgentController(IndicatorWindow indicator)
+_indicator = indicator;
+if (s == RecorderState.Recording) _indicator.SetRecording();
+else if (s == RecorderState.Paused) _indicator.SetPaused();
+else if (s == RecorderState.Error) _indicator.SetMicError("Fallo al acceder al micrófono.");
+else _indicator.SetStopped();
+_indicator.SetServerConnection(isConnected, error);
+_indicator.SetServerConnection(false, ex.Message);
+_indicator.SetPoweredOff();
+_indicator.SetStopped(); // could set a specific state
+_indicator.SetStopped(); // Stop if no cashier is assigned
+_indicator.SetMicError("Micrófono no configurado o inválido.");
+_indicator.SetError("Local (Sin Cajero). No se envió.");
+_indicator.SetTransmitting(true);
+_indicator.SetError($"Error al subir:\n{ex.Message}");
+_indicator.SetTransmitting(false);
+MessageBox.Show("No se puede reanudar la grabación porque no se ha seleccionado un micrófono en la configuración.",
+_indicator.SetMicError("Micrófono no configurado.");
+MessageBox.Show("La hora actual está fuera del horario de grabación.\nRevise la Configuración de Horarios si desea grabar ahora.",
+_indicator.SetStopped();
+var ok = settingsWin.ShowDialog() == true;
+_indicator.SetPoweredOff();

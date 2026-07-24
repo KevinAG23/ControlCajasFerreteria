@@ -1,0 +1,78 @@
+import React, { useState } from 'react';
+
+// ─── deterministic helpers ──────────────────────────────────────────────────
+const MUTED_SCHEMES = [
+    { dot: '#818cf8', ring: '#e0e7ff', text: '#4338ca', bg: '#eef2ff' }, // indigo
+    { dot: '#60a5fa', ring: '#dbeafe', text: '#1d4ed8', bg: '#eff6ff' }, // blue
+    { dot: '#34d399', ring: '#d1fae5', text: '#065f46', bg: '#ecfdf5' }, // emerald
+    { dot: '#a78bfa', ring: '#ede9fe', text: '#5b21b6', bg: '#f5f3ff' }, // violet
+    { dot: '#f9a8d4', ring: '#fce7f3', text: '#9d174d', bg: '#fdf2f8' }, // pink
+    { dot: '#67e8f9', ring: '#cffafe', text: '#0e7490', bg: '#ecfeff' }, // cyan
+];
+const scheme = (name = '') => MUTED_SCHEMES[name.charCodeAt(0) % MUTED_SCHEMES.length];
+const initials = (name = '') => name.slice(0, 2).toUpperCase() || '??';
+const mockStat = (name = '') => {
+    const s = name.charCodeAt(0) || 65;
+    const r = 70 + (s % 28);
+    const label = r >= 90 ? 'Excelente' : r >= 80 ? 'Bueno' : r >= 70 ? 'Regular' : 'Bajo';
+    const dotColor = r >= 90 ? '#10b981' : r >= 80 ? '#60a5fa' : r >= 70 ? '#fbbf24' : '#f87171';
+    return { att: 38 + (s % 55), rend: r, sat: (6.8 + ((s % 32) / 10)).toFixed(1), label, dotColor };
+};
+
+// ─── single list row ─────────────────────────────────────────────────────────
+function CashierRow({ user, index, onViewAnalysis, onViewClients }) {
+    const [hov, setHov] = useState(false);
+    const [anaHov, setAnaHov] = useState(false);
+    const [cliHov, setCliHov] = useState(false);
+
+    const sc = scheme(user.username);
+    const stat = mockStat(user.username);
+    const fullName = user.contacto
+        ? `${user.contacto.nombre} ${user.contacto.apellido}`
+        : null;
+
+    return (
+        <div
+            onMouseEnter={() => setHov(true)}
+            onMouseLeave={() => setHov(false)}
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+                padding: '0.9rem 1.4rem',
+                borderRadius: '14px',
+                background: hov ? '#f8fafc' : 'transparent',
+                border: `1px solid ${hov ? '#e2e8f0' : 'transparent'}`,
+                transition: 'all 0.2s ease',
+                cursor: 'default',
+                animation: `rowIn 0.35s cubic-bezier(.4,0,.2,1) ${index * 0.04}s both`,
+                position: 'relative',
+            }}
+        >
+            {/* colored left accent bar */}
+            <div style={{
+                position: 'absolute', left: 0, top: '18%',
+
+--- ATENCIONES ---
+
+0.5rem', flexShrink: 0 }}>
+                {[
+                    { icon: '👤', val: stat.att, tip: 'Atenciones' },
+                    { icon: '⭐', val: `${stat.sat}/10`, tip: 'Satisfacción' },
+                ].map(p => (
+                    <div key={p.tip} title={p.tip} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.3rem',
+                        background: '#f1f5f9',
+                        padding: '0.28rem 0.6rem',
+                        borderRadius: '8px',
+                        fontSize: '0.74rem', fontWeight: '600', color: '#475569',
+                        border: '1px solid #e2e8f0',
+                    }}>
+                        <span style={{ fontSize: '0.8rem' }}>{p.icon}</span>
+                        {p.val}
+                    </div>
+                ))}
+            </div>
+
+            {/* rendimiento badge */}
+            <div style=

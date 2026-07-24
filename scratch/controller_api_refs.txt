@@ -1,0 +1,14 @@
+34: return ApiClient.ServerUtcNow.AddHours(-5);
+54: // Cuando se cierra un segmento, lo mandamos a la API (ingest) y opcionalmente bajamos el enhanced
+57: var adjustedStart = startedAtUtc + ApiClient.ServerTimeOffset;
+58: var adjustedEnd = endedAtUtc + ApiClient.ServerTimeOffset;
+80: if (string.IsNullOrWhiteSpace(_settings.ApiBaseUrl)) return;
+83: var api = new ApiClient(_settings.ApiBaseUrl, _settings.ApiTimeoutSeconds);
+84: var (isConnected, error) = await api.CheckConnectionAsync();
+92: var (serverEstado, serverContacto, _) = await api.PingAsync(_settings.CajaId, isRecording, estadoGrabacion);
+272: /// - POST /audio/ingest (API solo recibe + encola)
+274: /// - (Opcional) Cliente descarga /audio/{id}/enhanced cuando exista
+320: var api = new ApiClient(_settings.ApiBaseUrl, _settings.ApiTimeoutSeconds);
+323: var ingest = await api.IngestAudioAsync(
+394: var api = new ApiClient(settings.ApiBaseUrl, settings.ApiTimeoutSeconds);
+401: await api.DownloadEnhancedAsync(grabacionId, enhancedPath);

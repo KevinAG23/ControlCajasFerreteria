@@ -1,0 +1,341 @@
+--- Around line 211 ---
+201:                 enabled: true
+202:             });
+203:         }
+204:         setShowBoxModal(true);
+205:     };
+206: 
+207:     // Recordings State
+208:     const [allRecordings, setAllRecordings] = useState([]);
+209:     const [currentPage, setCurrentPage] = useState(1);
+210:     const itemsPerPage = 10;
+211:     const [selectedRecording, setSelectedRecording] = useState(null);
+212:     const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+213:     const [transcriptionData, setTranscriptionData] = useState(null);
+214:     const [isTranscriptionLoading, setIsTranscriptionLoading] = useState(false);
+215:     const [analysisData, setAnalysisData] = useState(null);
+216:     const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+217: 
+218:     // Individual Response Editing State
+219:     const [editingResponseId, setEditingResponseId] = useState(null);
+220:     const [tempResponseScore, setTempResponseScore] = useState("");
+221: 
+222:     // Fetch Transcriptions Effect
+223:     useEffect(() => {
+224:         if (selectedRecording) {
+225:             const fetchTranscripciones = async () => {
+226:                 setIsTranscriptionLoading(true);
+227:                 try {
+228:                     const data = await getTranscripciones(selectedRecording.rawId);
+229:                     setTranscriptionData(data);
+230:                 } catch (error) {
+231:                     console.error("Error fetching transcription:", error);
+232:                     setTranscriptionData(null);
+233:                 } finally {
+234:                     setIsTranscriptionLoading(false);
+235:                 }
+
+
+--- Around line 224 ---
+214:     const [isTranscriptionLoading, setIsTranscriptionLoading] = useState(false);
+215:     const [analysisData, setAnalysisData] = useState(null);
+216:     const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+217: 
+218:     // Individual Response Editing State
+219:     const [editingResponseId, setEditingResponseId] = useState(null);
+220:     const [tempResponseScore, setTempResponseScore] = useState("");
+221: 
+222:     // Fetch Transcriptions Effect
+223:     useEffect(() => {
+224:         if (selectedRecording) {
+225:             const fetchTranscripciones = async () => {
+226:                 setIsTranscriptionLoading(true);
+227:                 try {
+228:                     const data = await getTranscripciones(selectedRecording.rawId);
+229:                     setTranscriptionData(data);
+230:                 } catch (error) {
+231:                     console.error("Error fetching transcription:", error);
+232:                     setTranscriptionData(null);
+233:                 } finally {
+234:                     setIsTranscriptionLoading(false);
+235:                 }
+236:             };
+237:             fetchTranscripciones();
+238:         } else {
+239:             setTranscriptionData(null);
+240:         }
+241:     }, [selectedRecording]);
+242: 
+243:     // Fetch Analysis Effect
+244:     useEffect(() => {
+245:         if (selectedAnalysis) {
+246:             const fetchAnalisisData = async () => {
+247:                 setIsAnalysisLoading(true);
+248:                 try {
+
+
+--- Around line 228 ---
+218:     // Individual Response Editing State
+219:     const [editingResponseId, setEditingResponseId] = useState(null);
+220:     const [tempResponseScore, setTempResponseScore] = useState("");
+221: 
+222:     // Fetch Transcriptions Effect
+223:     useEffect(() => {
+224:         if (selectedRecording) {
+225:             const fetchTranscripciones = async () => {
+226:                 setIsTranscriptionLoading(true);
+227:                 try {
+228:                     const data = await getTranscripciones(selectedRecording.rawId);
+229:                     setTranscriptionData(data);
+230:                 } catch (error) {
+231:                     console.error("Error fetching transcription:", error);
+232:                     setTranscriptionData(null);
+233:                 } finally {
+234:                     setIsTranscriptionLoading(false);
+235:                 }
+236:             };
+237:             fetchTranscripciones();
+238:         } else {
+239:             setTranscriptionData(null);
+240:         }
+241:     }, [selectedRecording]);
+242: 
+243:     // Fetch Analysis Effect
+244:     useEffect(() => {
+245:         if (selectedAnalysis) {
+246:             const fetchAnalisisData = async () => {
+247:                 setIsAnalysisLoading(true);
+248:                 try {
+249:                     const data = await getAnalisis(selectedAnalysis.rawId);
+250:                     setAnalysisData(data);
+251:                 } catch (error) {
+252:                     console.error("Error fetching analysis:", error);
+
+
+--- Around line 241 ---
+231:                     console.error("Error fetching transcription:", error);
+232:                     setTranscriptionData(null);
+233:                 } finally {
+234:                     setIsTranscriptionLoading(false);
+235:                 }
+236:             };
+237:             fetchTranscripciones();
+238:         } else {
+239:             setTranscriptionData(null);
+240:         }
+241:     }, [selectedRecording]);
+242: 
+243:     // Fetch Analysis Effect
+244:     useEffect(() => {
+245:         if (selectedAnalysis) {
+246:             const fetchAnalisisData = async () => {
+247:                 setIsAnalysisLoading(true);
+248:                 try {
+249:                     const data = await getAnalisis(selectedAnalysis.rawId);
+250:                     setAnalysisData(data);
+251:                 } catch (error) {
+252:                     console.error("Error fetching analysis:", error);
+253:                     setAnalysisData(null);
+254:                 } finally {
+255:                     setIsAnalysisLoading(false);
+256:                 }
+257:             };
+258:             fetchAnalisisData();
+259:         } else {
+260:             setAnalysisData(null);
+261:         }
+262:     }, [selectedAnalysis]);
+263: 
+264:     const handleSaveResponseScore = async (respId) => {
+265:         if (!analysisData) return;
+
+
+--- Around line 1890 ---
+1880:                         </div>
+1881:                     </div>
+1882:                 </header>
+1883: 
+1884:                 <div className="page-content">
+1885:                     {renderContent()}
+1886:                 </div>
+1887:             </main>
+1888: 
+1889:             {/* TRANSCRIPTION MODAL */}
+1890:             {selectedRecording && (
+1891:                 <div className="modal-overlay" style={{
+1892:                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+1893:                     backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+1894:                     zIndex: 1000, backdropFilter: 'blur(4px)'
+1895:                 }}>
+1896:                     <div className="modal-content" style={{
+1897:                         backgroundColor: 'white', padding: '0', borderRadius: 'var(--radius-xl)',
+1898:                         width: '90%', maxWidth: '850px', maxHeight: '85vh', overflow: 'hidden',
+1899:                         boxShadow: 'var(--shadow-2xl)', display: 'flex', flexDirection: 'column',
+1900:                         animation: 'fadeIn 0.3s ease-out'
+1901:                     }}>
+1902:                         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#f8fafc' }}>
+1903:                             <div>
+1904:                                 <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+1905:                                     <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+1906:                                 </h2>
+1907:                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+1908:                                     <span className="badge badge-blue">Cajero: {selectedRecording.cajero}</span>
+1909:                                     <span className="badge badge-orange">Duración: {selectedRecording.duracion}</span>
+1910:                                     <span className="badge badge-green">Caja: {selectedRecording.caja}</span>
+1911:                                 </div>
+1912:                             </div>
+1913:                             <button
+1914:                                 onClick={() => setSelectedRecording(null)}
+
+
+--- Around line 1908 ---
+1898:                         width: '90%', maxWidth: '850px', maxHeight: '85vh', overflow: 'hidden',
+1899:                         boxShadow: 'var(--shadow-2xl)', display: 'flex', flexDirection: 'column',
+1900:                         animation: 'fadeIn 0.3s ease-out'
+1901:                     }}>
+1902:                         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#f8fafc' }}>
+1903:                             <div>
+1904:                                 <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+1905:                                     <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+1906:                                 </h2>
+1907:                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+1908:                                     <span className="badge badge-blue">Cajero: {selectedRecording.cajero}</span>
+1909:                                     <span className="badge badge-orange">Duración: {selectedRecording.duracion}</span>
+1910:                                     <span className="badge badge-green">Caja: {selectedRecording.caja}</span>
+1911:                                 </div>
+1912:                             </div>
+1913:                             <button
+1914:                                 onClick={() => setSelectedRecording(null)}
+1915:                                 className="icon-btn"
+1916:                                 style={{ background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+1917:                                 title="Cerrar"
+1918:                             >
+1919:                                 ✕
+1920:                             </button>
+1921:                         </div>
+1922: 
+1923:                         <div className="transcription-body" style={{
+1924:                             fontSize: '0.95rem', lineHeight: '1.6',
+1925:                             padding: '2rem', flexGrow: 1, overflowY: 'auto',
+1926:                             backgroundColor: 'white'
+1927:                         }}>
+1928:                             {isTranscriptionLoading ? (
+1929:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+1930:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+1931:                                     Cargando transcripción...
+1932:                                 </div>
+
+
+--- Around line 1909 ---
+1899:                         boxShadow: 'var(--shadow-2xl)', display: 'flex', flexDirection: 'column',
+1900:                         animation: 'fadeIn 0.3s ease-out'
+1901:                     }}>
+1902:                         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#f8fafc' }}>
+1903:                             <div>
+1904:                                 <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+1905:                                     <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+1906:                                 </h2>
+1907:                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+1908:                                     <span className="badge badge-blue">Cajero: {selectedRecording.cajero}</span>
+1909:                                     <span className="badge badge-orange">Duración: {selectedRecording.duracion}</span>
+1910:                                     <span className="badge badge-green">Caja: {selectedRecording.caja}</span>
+1911:                                 </div>
+1912:                             </div>
+1913:                             <button
+1914:                                 onClick={() => setSelectedRecording(null)}
+1915:                                 className="icon-btn"
+1916:                                 style={{ background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+1917:                                 title="Cerrar"
+1918:                             >
+1919:                                 ✕
+1920:                             </button>
+1921:                         </div>
+1922: 
+1923:                         <div className="transcription-body" style={{
+1924:                             fontSize: '0.95rem', lineHeight: '1.6',
+1925:                             padding: '2rem', flexGrow: 1, overflowY: 'auto',
+1926:                             backgroundColor: 'white'
+1927:                         }}>
+1928:                             {isTranscriptionLoading ? (
+1929:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+1930:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+1931:                                     Cargando transcripción...
+1932:                                 </div>
+1933:                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos.length > 0 ? (
+
+
+--- Around line 1910 ---
+1900:                         animation: 'fadeIn 0.3s ease-out'
+1901:                     }}>
+1902:                         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#f8fafc' }}>
+1903:                             <div>
+1904:                                 <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+1905:                                     <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+1906:                                 </h2>
+1907:                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+1908:                                     <span className="badge badge-blue">Cajero: {selectedRecording.cajero}</span>
+1909:                                     <span className="badge badge-orange">Duración: {selectedRecording.duracion}</span>
+1910:                                     <span className="badge badge-green">Caja: {selectedRecording.caja}</span>
+1911:                                 </div>
+1912:                             </div>
+1913:                             <button
+1914:                                 onClick={() => setSelectedRecording(null)}
+1915:                                 className="icon-btn"
+1916:                                 style={{ background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+1917:                                 title="Cerrar"
+1918:                             >
+1919:                                 ✕
+1920:                             </button>
+1921:                         </div>
+1922: 
+1923:                         <div className="transcription-body" style={{
+1924:                             fontSize: '0.95rem', lineHeight: '1.6',
+1925:                             padding: '2rem', flexGrow: 1, overflowY: 'auto',
+1926:                             backgroundColor: 'white'
+1927:                         }}>
+1928:                             {isTranscriptionLoading ? (
+1929:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+1930:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+1931:                                     Cargando transcripción...
+1932:                                 </div>
+1933:                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos.length > 0 ? (
+1934:                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+
+--- Around line 1923 ---
+1913:                             <button
+1914:                                 onClick={() => setSelectedRecording(null)}
+1915:                                 className="icon-btn"
+1916:                                 style={{ background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+1917:                                 title="Cerrar"
+1918:                             >
+1919:                                 ✕
+1920:                             </button>
+1921:                         </div>
+1922: 
+1923:                         <div className="transcription-body" style={{
+1924:                             fontSize: '0.95rem', lineHeight: '1.6',
+1925:                             padding: '2rem', flexGrow: 1, overflowY: 'auto',
+1926:                             backgroundColor: 'white'
+1927:                         }}>
+1928:                             {isTranscriptionLoading ? (
+1929:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+1930:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+1931:                                     Cargando transcripción...
+1932:                                 </div>
+1933:                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos.length > 0 ? (
+1934:                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+1935:                                     {transcriptionData[0].segmentos.map((segmento, idx) => {
+1936:                                         const isCajero = segmento.hablante === 'SPEAKER_00';
+1937:                                         return (
+1938:                                             <div key={idx} style={{
+1939:                                                 display: 'flex',
+1940:                                                 alignItems: 'baseline',
+1941:                                                 gap: '1rem',
+1942:                                                 padding: '0.5rem 0.5rem',
+1943:                                                 borderBottom: '1px solid #f8fafc',
+1944:                                                 fontFamily: 'monospace, sans-serif'
+1945:                                             }}>
+1946:                                                 <span style={{ color: '#64748b', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+1947:                                                     [ {Number(segmento.inicio_segundo).toFixed(2).padStart(5, '0')} - {Number(segmento.fin_segundo).toFixed(2).padStart(5, '0')} ]
+

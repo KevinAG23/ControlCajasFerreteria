@@ -1,0 +1,120 @@
+<Window x:Class="CajaRecorderAgent.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Bienvenido" Height="650" Width="451"
+        Icon="pack://application:,,,/Assets/logo.ico"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#FFF7F1EB">
+
+    <Grid Margin="24">
+        <Border CornerRadius="20" BorderThickness="1" BorderBrush="#FFF2C9A9" Padding="28">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FFFFFFFF" Offset="0"/>
+                    <GradientStop Color="#FFFDF3EA" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <StackPanel>
+
+                <TextBlock Text="Bienvenido"
+                           Foreground="#FFEA6A00"
+                           FontSize="30" FontWeight="Bold"
+                           HorizontalAlignment="Center" Margin="0,6,0,4"/>
+
+                <TextBlock Text="Sistema de Grabación de Cajas"
+                           Foreground="#FF9B7A63"
+                           FontSize="14"
+                           HorizontalAlignment="Center" Margin="0,0,0,28"/>
+
+                <TextBlock Text="Usuario" Foreground="#FF5B3A2A" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <Border CornerRadius="12" BorderBrush="#FFF2C9A9" BorderThickness="1" Padding="12" Background="#FFF7F1EB">
+                    <TextBox x:Name="TxtUser"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             FontSize="14"
+                             Padding="4"/>
+                </Border>
+
+                <TextBlock Text="Contraseña" Foreground="#FF5B3A2A" FontWeight="SemiBold" Margin="0,18,0,8"/>
+                <Border CornerRadius="12" BorderBrush="#FFF2C9A9" BorderThickness="1" Padding="12" Background="#FFF7F1EB">
+                    <PasswordBox x:Name="TxtPass"
+                                 BorderThickness="0"
+                                 Background="Transparent"
+                                 FontSize="14"
+                                 Padding="4"
+                                 KeyDown="TxtPass_KeyDown"/>
+                </Border>
+
+                <!-- Configuración Avanzada -->
+                <Expander Header="Configuración de Servidor" Foreground="#FF9B7A63" Margin="0,16,0,0">
+                    <StackPanel Margin="0,8,0,0">
+                        <TextBlock Text="URL del Servidor API" Foreground="#FF5B3A2A" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                        <Border CornerRadius="12" BorderBrush="#FFF2C9A9" BorderThickness="1" Padding="12" Background="#FFF7F1EB">
+                            <TextBox x:Name="TxtApiUrl"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     FontSize="14"
+                                     Padding="4"/>
+                        </Border>
+                    </StackPanel>
+                </Expander>
+
+                <!-- Estado / Mensaje -->
+                <TextBlock x:Name="TxtStatus"
+                           Text=""
+                           Foreground="#FF9B7A63"
+                           Margin="0,12,0,0"
+                           FontSize="12"
+                           TextAlignment="Center"
+                           Visibility="Collapsed"/>
+
+                <Button x:Name="BtnLogin"
+                        Content="Iniciar sesión"
+                        Height="48"
+                        Margin="0,28,0,0"
+                        Foreground="White"
+                        FontWeight="Bold"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Click="Ok_Click"
+                        IsDefault="True">
+                    <Button.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#FFF7B889" Offset="0"/>
+                            <GradientStop Color="#FFEA6A00" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Button.Background>
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="14">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <Button x:Name="BtnCancel"
+                        Content="Cancelar"
+                        Height="40"
+                        Margin="0,12,0,0"
+                        Background="#FFF0E6DD"
+                        Foreground="#FF6A4A3A"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Click="Cancel_Click"
+                        IsCancel="True">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border Background="{TemplateBinding Background}" CornerRadius="14">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

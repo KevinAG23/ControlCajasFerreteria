@@ -1,0 +1,16 @@
+class Rol(Base):
+class Contacto(Base):
+class Usuario(Base):
+class Caja(Base):
+class CategoriaPregunta(Base):
+class CatalogoPreguntas(Base):
+class EstadoBufferCaja(Base):
+class Grabacion(Base):
+class Transcripcion(Base):
+class SegmentoTranscripcion(Base):
+class Atencion(Base):
+class AnalisisGeneral(Base):
+resumen_ejecutivo = Column(Text)
+class RespuestaEvaluacion(Base):
+justificacion_ia = Column(Text)
+class LogAuditoria(Base):

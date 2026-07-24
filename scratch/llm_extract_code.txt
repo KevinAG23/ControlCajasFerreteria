@@ -1,0 +1,85 @@
+Line 161:         except Exception as e:
+Line 162:             if attempt == max_retries:
+Line 163:                 raise e
+Line 164:             sleep_time = attempt * 3
+Line 165:             print(f"[LLM Call] Error en intento {attempt}/{max_retries}: {e}. Reintentando en {sleep_time}s...")
+Line 166:             time.sleep(sleep_time)
+Line 167: 
+Line 168: def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
+Line 169:     system = (
+Line 170:         "Eres un analizador de conversaciones de servicio al cliente. "
+Line 171:         "Devuelve SIEMPRE JSON estricto, sin texto extra."
+Line 172:     )
+Line 173: 
+Line 174:     compact_format = (
+Line 175:         "{\n"
+Line 176:         '  "cajero_speaker": "Identificador exacto de la persona que actúa como Cajero/Agente en la transcripción (ej: \'SPEAKER_00\' o \'SPEAKER_01\').",\n'
+Line 177:         '  "resumen_general": "Resumen ejecutivo de toda la grabación de 10 minutos (máx. 2 frases).",\n'
+Line 178:         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
+Line 179:         '  "atenciones": [\n'
+Line 180:         '    {\n'
+Line 181:         '      "estado": "COMPLETADA" | "EN_PROCESO",\n'
+Line 182:         '      "inicio_segundo": número,\n'
+Line 183:         '      "fin_segundo": número\n'
+Line 184:         '    }\n'
+Line 185:         '  ]\n'
+Line 186:         "}"
+Line 187:     )
+Line 188: 
+Line 189:     user = (
+Line 190:         "Analiza la transcripción de audio del cajero (duración aprox. 10 minutos) y sepárala en atenciones individuales (máx. 2).\n"
+Line 191:         "REGLAS DE SEGMENTACIÓN Y CONTINUACIÓN:\n"
+Line 192:         "- Identifica qué etiqueta de hablante corresponde al Cajero (el que saluda, atiende y cobra, ej: 'SPEAKER_00' o 'SPEAKER_01') y devuélvelo en 'cajero_speaker'.\n"
+Line 193:         "- Una atención inicia con un saludo (ej: 'Buenos días', 'Hola', '¿Cómo está?') o cuando el cliente inicia una transacción.\n"
+Line 194:         "- Termina con una despedida (ej: 'Gracias', 'Que le vaya bien') o al finalizar el cobro (facturación, entrega de cambio/ticket).\n"
+Line 195:         "- IMPORTANTE: Si la grabación inicia con la continuación directa de una conversación anterior (marcada al principio del texto), unifícala en la misma primera atención en lugar de iniciar una nueva.\n"
+Line 196:         "- Identifica de 0 a un MÁXIMO de 2 atenciones reales. No inventes atenciones si no existen en el texto.\n"
+Line 197:         "- 'inicio_segundo' y 'fin_segundo' son los números decimales exactos del primer y último segmento de la atención.\n"
+Line 198:         "- Si la última atención se corta abruptamente sin terminar, usa estado 'EN_PROCESO'. Si no, 'COMPLETADA'.\n\n"
+Line 199:         f"FORMATO JSON:\n{compact_format}\n\n"
+Line 200:         f"INPUT:\n{json.dumps(payload, ensure_ascii=False)}"
+Line 201:     )
+Line 202: 
+Line 203:     max_retries = 2
+Line 204:     for attempt in range(1, max_retries + 1):
+Line 205:         try:
+Line 206:             if LLM_PROVIDER == "groq":
+Line 207:                 if not GROQ_API_KEY:
+Line 208:                     raise RuntimeError("GROQ_API_KEY no está definido")
+Line 209:                 from groq import Groq
+Line 210:                 client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+Line 211:                 resp = client.chat.completions.create(
+Line 212:                     model=LLM_MODEL or "llama-3.3-70b-versatile",
+Line 213:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+Line 214:                     temperature=0.1,
+Line 215:                     response_format={"type": "json_object"}
+Line 216:                 )
+Line 217:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+Line 218: 
+Line 219:             if LLM_PROVIDER == "openai":
+Line 220:                 if not OPENAI_API_KEY:
+Line 221:                     raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+Line 222:                 from openai import OpenAI
+Line 223:                 client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+Line 224:                 resp = client.chat.completions.create(
+Line 225:                     model=LLM_MODEL or "gpt-4o-mini",
+Line 226:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+Line 227:                     temperature=0.1,
+Line 228:                     timeout=LLM_TIMEOUT_SEC,
+Line 229:                     response_format={"type": "json_object"},
+Line 230:                 )
+Line 231:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+Line 232: 
+Line 233:             raise RuntimeError(f"LLM_PROVIDER no soportado para extract: {LLM_PROVIDER}")
+Line 234:         except Exception as e:
+Line 235:             if attempt == max_retries:
+Line 236:                 raise e
+Line 237:             sleep_time = attempt * 3
+Line 238:             print(f"[LLM Extract] Error en intento {attempt}/{max_retries}: {e}. Reintentando en {sleep_time}s...")
+Line 239:             time.sleep(sleep_time)
+Line 240: 
+Line 241: # =========================
+Line 242: # JOB
+Line 243: # =========================
+Line 244: def analyze_job(grabacion_id: str) -> Dict[str, Any]:
+Line 245:     """

@@ -1,0 +1,412 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\agentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\agentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\apiclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\apiclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\models\\apidtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:models\\apidtos.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\settingswindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\settingswindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\models\\appsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:models\\appsettings.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:assemblyinfo.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:app.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:app.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\logservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\logservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\recorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\recorderservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\sessionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\sessionservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\scheduleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\scheduleservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\services\\settingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:services\\settingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\settingswindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\settingswindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\loginwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\loginwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\indicatorwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\indicatorwindow.xaml.cs||{8B382828-6202-11D1-8870-0000F87579D2}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\indicatorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\indicatorwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\controlwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\controlwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\views\\controlwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:views\\controlwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\cajarecorderagent.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:cajarecorderagent.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:mainwindow.xaml||{F11ACC28-31D1-4C80-A34B-F4E09D3D753C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|c:\\users\\user\\downloads\\flujocompletocajas_2026\\desktop_agent\\cajarecorderagent\\mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{774F2A8E-8EE5-49A5-B72A-EA7E15AAE0A1}|CajaRecorderAgent.csproj|solutionrelative:mainwindow.xaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 3,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{e1b7d1f8-9b3c-49b1-8f4f-bfc63a88835d}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{56df62a4-05a3-4e5b-aa1a-99371ccfb997}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ApiClient.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\ApiClient.cs",
+              "RelativeDocumentMoniker": "Services\\ApiClient.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\ApiClient.cs",
+              "RelativeToolTip": "Services\\ApiClient.cs",
+              "ViewState": "AgIAAC0AAAAAAAAAAAAQwDoAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-16T20:29:20.592Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "AgentController.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\AgentController.cs",
+              "RelativeDocumentMoniker": "Services\\AgentController.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\AgentController.cs",
+              "RelativeToolTip": "Services\\AgentController.cs",
+              "ViewState": "AgIAACABAAAAAAAAAAAQwDYBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T19:11:36.651Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "AssemblyInfo.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\AssemblyInfo.cs",
+              "RelativeDocumentMoniker": "AssemblyInfo.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\AssemblyInfo.cs",
+              "RelativeToolTip": "AssemblyInfo.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T19:06:21.872Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "App.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\App.xaml.cs",
+              "RelativeDocumentMoniker": "App.xaml.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\App.xaml.cs",
+              "RelativeToolTip": "App.xaml.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T19:39:53.423Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "AppSettings.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Models\\AppSettings.cs",
+              "RelativeDocumentMoniker": "Models\\AppSettings.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Models\\AppSettings.cs",
+              "RelativeToolTip": "Models\\AppSettings.cs",
+              "ViewState": "AgIAAAEAAAAAAAAAAAAIwBcAAABAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:49:09.466Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "SettingsWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\SettingsWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\SettingsWindow.xaml",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\SettingsWindow.xaml",
+              "RelativeToolTip": "Views\\SettingsWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-18T19:10:26.179Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "AuthService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\AuthService.cs",
+              "RelativeDocumentMoniker": "Services\\AuthService.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\AuthService.cs",
+              "RelativeToolTip": "Services\\AuthService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:49:30.48Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "ApiDtos.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Models\\ApiDtos.cs",
+              "RelativeDocumentMoniker": "Models\\ApiDtos.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Models\\ApiDtos.cs",
+              "RelativeToolTip": "Models\\ApiDtos.cs",
+              "ViewState": "AgIAABgAAAAAAAAAAAAAAD4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-16T20:28:52.2Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "LogService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\LogService.cs",
+              "RelativeDocumentMoniker": "Services\\LogService.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\LogService.cs",
+              "RelativeToolTip": "Services\\LogService.cs",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAACcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-14T18:20:57.558Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "App.xaml",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\App.xaml",
+              "RelativeDocumentMoniker": "App.xaml",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\App.xaml",
+              "RelativeToolTip": "App.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-18T19:06:08.008Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "RecorderService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\RecorderService.cs",
+              "RelativeDocumentMoniker": "Services\\RecorderService.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\RecorderService.cs",
+              "RelativeToolTip": "Services\\RecorderService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:49:50.091Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "SessionService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\SessionService.cs",
+              "RelativeDocumentMoniker": "Services\\SessionService.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\SessionService.cs",
+              "RelativeToolTip": "Services\\SessionService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-01-16T20:28:27.103Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "ScheduleService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\ScheduleService.cs",
+              "RelativeDocumentMoniker": "Services\\ScheduleService.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\ScheduleService.cs",
+              "RelativeToolTip": "Services\\ScheduleService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:49:40.106Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "SettingsService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\SettingsService.cs",
+              "RelativeDocumentMoniker": "Services\\SettingsService.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Services\\SettingsService.cs",
+              "RelativeToolTip": "Services\\SettingsService.cs",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAABcAAAALAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:49:20.911Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "SettingsWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\SettingsWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\SettingsWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\SettingsWindow.xaml.cs",
+              "RelativeToolTip": "Views\\SettingsWindow.xaml.cs",
+              "ViewState": "AgIAAIoAAAAAAAAAAAAQwLAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T19:10:38.872Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "LoginWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\LoginWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\LoginWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\LoginWindow.xaml.cs",
+              "RelativeToolTip": "Views\\LoginWindow.xaml.cs",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAQwGEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T19:10:05.896Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "LoginWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\LoginWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\LoginWindow.xaml",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\LoginWindow.xaml",
+              "RelativeToolTip": "Views\\LoginWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-18T19:09:29.393Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "IndicatorWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\IndicatorWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\IndicatorWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\IndicatorWindow.xaml.cs",
+              "RelativeToolTip": "Views\\IndicatorWindow.xaml.cs",
+              "ViewState": "AgIAAEMAAAAAAAAAAAAAAFUAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:55:43.488Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "IndicatorWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\IndicatorWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\IndicatorWindow.xaml",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\IndicatorWindow.xaml",
+              "RelativeToolTip": "Views\\IndicatorWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-18T18:55:33.443Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "ControlWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\ControlWindow.xaml.cs",
+              "RelativeDocumentMoniker": "Views\\ControlWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\ControlWindow.xaml.cs",
+              "RelativeToolTip": "Views\\ControlWindow.xaml.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAAQwDcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T19:11:16.711Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "ControlWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\ControlWindow.xaml",
+              "RelativeDocumentMoniker": "Views\\ControlWindow.xaml",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\Views\\ControlWindow.xaml",
+              "RelativeToolTip": "Views\\ControlWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-18T19:11:04.402Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "CajaRecorderAgent",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\CajaRecorderAgent.csproj",
+              "RelativeDocumentMoniker": "CajaRecorderAgent.csproj",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\CajaRecorderAgent.csproj",
+              "RelativeToolTip": "CajaRecorderAgent.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-12-18T19:45:10.866Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "MainWindow.xaml",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\MainWindow.xaml",
+              "RelativeDocumentMoniker": "MainWindow.xaml",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\MainWindow.xaml",
+              "RelativeToolTip": "MainWindow.xaml",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003549|",
+              "WhenOpened": "2025-12-18T18:45:11.882Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "MainWindow.xaml.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\MainWindow.xaml.cs",
+              "RelativeDocumentMoniker": "MainWindow.xaml.cs",
+              "ToolTip": "C:\\Users\\User\\Downloads\\FlujoCompletoCajas_2026\\desktop_agent\\CajaRecorderAgent\\MainWindow.xaml.cs",
+              "RelativeToolTip": "MainWindow.xaml.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAARAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-18T18:45:05.416Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

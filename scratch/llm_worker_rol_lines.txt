@@ -1,0 +1,1055 @@
+--- Around line 122 ---
+112:         '    }\n'
+113:         '  ]\n'
+114:         "}"
+115:     )
+116: 
+117:     user = (
+118:         "Evalúa rigurosamente el cumplimiento de estándares en la siguiente atención al cliente.\n"
+119:         "REGLAS DE EVALUACIÓN:\n"
+120:         "- Para cada ID de pregunta, evalúa estrictamente según su 'Criterio'. Si no se define criterio, asume que es una pregunta booleana de sí/no.\n"
+121:         "- 'cumple': true si cumple plenamente la condición; false si hay omisión, falla o no aplica.\n"
+122:         "- 'justificacion_ia': Cita súper corta (máx. 5 palabras) con marca de tiempo y hablante (ej: 'Cajero [14.5s]: Hola' o 'No se observa').\n"
+123:         "- 'calificacion_general': Porcentaje de cumplimiento de 0 a 100, calculado como: (cantidad de cumple=true / total evaluaciones) * 100.\n"
+124:         "- 'resumen_ejecutivo': Resumen conciso de la calidad de atención (máx. 2 frases).\n"
+125:         "- 'actitudes': Actitud y tono emocional del agente y cliente (máx. 1 frase).\n\n"
+126:         f"PREGUNTAS:\n{lista_preguntas_str}\n\n"
+127:         f"FORMATO JSON:\n{compact_format}\n\n"
+128:         f"INPUT:\n{json.dumps(payload, ensure_ascii=False)}"
+129:     )
+130: 
+131:     max_retries = 2
+132:     for attempt in range(1, max_retries + 1):
+133:         try:
+134:             if LLM_PROVIDER == "groq":
+135:                 if not GROQ_API_KEY:
+136:                     raise RuntimeError("GROQ_API_KEY (o GROK_API_KEY) no está definido en .env")
+137:                 from groq import Groq
+138:                 client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+139:                 resp = client.chat.completions.create(
+140:                     model=LLM_MODEL or "llama-3.3-70b-versatile",
+141:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+
+
+--- Around line 141 ---
+131:     max_retries = 2
+132:     for attempt in range(1, max_retries + 1):
+133:         try:
+134:             if LLM_PROVIDER == "groq":
+135:                 if not GROQ_API_KEY:
+136:                     raise RuntimeError("GROQ_API_KEY (o GROK_API_KEY) no está definido en .env")
+137:                 from groq import Groq
+138:                 client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+139:                 resp = client.chat.completions.create(
+140:                     model=LLM_MODEL or "llama-3.3-70b-versatile",
+141:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+142:                     temperature=0.2,
+143:                 )
+144:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+145: 
+146:             if LLM_PROVIDER == "openai":
+147:                 if not OPENAI_API_KEY:
+148:                     raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+149:                 from openai import OpenAI
+150:                 client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+151:                 resp = client.chat.completions.create(
+152:                     model=LLM_MODEL or "gpt-4o-mini",
+153:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+154:                     temperature=0.2,
+155:                     timeout=LLM_TIMEOUT_SEC,
+156:                     response_format={"type": "json_object"},
+157:                 )
+158:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+159: 
+160:             raise RuntimeError(f"LLM_PROVIDER no soportado: {LLM_PROVIDER}")
+
+
+--- Around line 153 ---
+143:                 )
+144:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+145: 
+146:             if LLM_PROVIDER == "openai":
+147:                 if not OPENAI_API_KEY:
+148:                     raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+149:                 from openai import OpenAI
+150:                 client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+151:                 resp = client.chat.completions.create(
+152:                     model=LLM_MODEL or "gpt-4o-mini",
+153:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+154:                     temperature=0.2,
+155:                     timeout=LLM_TIMEOUT_SEC,
+156:                     response_format={"type": "json_object"},
+157:                 )
+158:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+159: 
+160:             raise RuntimeError(f"LLM_PROVIDER no soportado: {LLM_PROVIDER}")
+161:         except Exception as e:
+162:             if attempt == max_retries:
+163:                 raise e
+164:             sleep_time = attempt * 3
+165:             print(f"[LLM Call] Error en intento {attempt}/{max_retries}: {e}. Reintentando en {sleep_time}s...")
+166:             time.sleep(sleep_time)
+167: 
+168: def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
+169:     system = (
+170:         "Eres un analizador de conversaciones de servicio al cliente. "
+171:         "Devuelve SIEMPRE JSON estricto, sin texto extra."
+172:     )
+
+
+--- Around line 176 ---
+166:             time.sleep(sleep_time)
+167: 
+168: def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
+169:     system = (
+170:         "Eres un analizador de conversaciones de servicio al cliente. "
+171:         "Devuelve SIEMPRE JSON estricto, sin texto extra."
+172:     )
+173: 
+174:     compact_format = (
+175:         "{\n"
+176:         '  "cajero_speaker": "Identificador exacto de la persona que actúa como Cajero/Agente en la transcripción (ej: \'SPEAKER_00\' o \'SPEAKER_01\').",\n'
+177:         '  "resumen_general": "Resumen ejecutivo de toda la grabación de 10 minutos (máx. 2 frases).",\n'
+178:         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
+179:         '  "atenciones": [\n'
+180:         '    {\n'
+181:         '      "estado": "COMPLETADA" | "EN_PROCESO",\n'
+182:         '      "inicio_segundo": número,\n'
+183:         '      "fin_segundo": número\n'
+184:         '    }\n'
+185:         '  ]\n'
+186:         "}"
+187:     )
+188: 
+189:     user = (
+190:         "Analiza la transcripción de audio del cajero (duración aprox. 10 minutos) y sepárala en atenciones individuales (máx. 2).\n"
+191:         "REGLAS DE SEGMENTACIÓN Y CONTINUACIÓN:\n"
+192:         "- Identifica qué etiqueta de hablante corresponde al Cajero (el que saluda, atiende y cobra, ej: 'SPEAKER_00' o 'SPEAKER_01') y devuélvelo en 'cajero_speaker'.\n"
+193:         "- Una atención inicia con un saludo (ej: 'Buenos días', 'Hola', '¿Cómo está?') o cuando el cliente inicia una transacción.\n"
+194:         "- Termina con una despedida (ej: 'Gracias', 'Que le vaya bien') o al finalizar el cobro (facturación, entrega de cambio/ticket).\n"
+195:         "- IMPORTANTE: Si la grabación inicia con la continuación directa de una conversación anterior (marcada al principio del texto), unifícala en la misma primera atención en lugar de iniciar una nueva.\n"
+
+
+--- Around line 192 ---
+182:         '      "inicio_segundo": número,\n'
+183:         '      "fin_segundo": número\n'
+184:         '    }\n'
+185:         '  ]\n'
+186:         "}"
+187:     )
+188: 
+189:     user = (
+190:         "Analiza la transcripción de audio del cajero (duración aprox. 10 minutos) y sepárala en atenciones individuales (máx. 2).\n"
+191:         "REGLAS DE SEGMENTACIÓN Y CONTINUACIÓN:\n"
+192:         "- Identifica qué etiqueta de hablante corresponde al Cajero (el que saluda, atiende y cobra, ej: 'SPEAKER_00' o 'SPEAKER_01') y devuélvelo en 'cajero_speaker'.\n"
+193:         "- Una atención inicia con un saludo (ej: 'Buenos días', 'Hola', '¿Cómo está?') o cuando el cliente inicia una transacción.\n"
+194:         "- Termina con una despedida (ej: 'Gracias', 'Que le vaya bien') o al finalizar el cobro (facturación, entrega de cambio/ticket).\n"
+195:         "- IMPORTANTE: Si la grabación inicia con la continuación directa de una conversación anterior (marcada al principio del texto), unifícala en la misma primera atención en lugar de iniciar una nueva.\n"
+196:         "- Identifica de 0 a un MÁXIMO de 2 atenciones reales. No inventes atenciones si no existen en el texto.\n"
+197:         "- 'inicio_segundo' y 'fin_segundo' son los números decimales exactos del primer y último segmento de la atención.\n"
+198:         "- Si la última atención se corta abruptamente sin terminar, usa estado 'EN_PROCESO'. Si no, 'COMPLETADA'.\n\n"
+199:         f"FORMATO JSON:\n{compact_format}\n\n"
+200:         f"INPUT:\n{json.dumps(payload, ensure_ascii=False)}"
+201:     )
+202: 
+203:     max_retries = 2
+204:     for attempt in range(1, max_retries + 1):
+205:         try:
+206:             if LLM_PROVIDER == "groq":
+207:                 if not GROQ_API_KEY:
+208:                     raise RuntimeError("GROQ_API_KEY no está definido")
+209:                 from groq import Groq
+210:                 client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+211:                 resp = client.chat.completions.create(
+
+
+--- Around line 213 ---
+203:     max_retries = 2
+204:     for attempt in range(1, max_retries + 1):
+205:         try:
+206:             if LLM_PROVIDER == "groq":
+207:                 if not GROQ_API_KEY:
+208:                     raise RuntimeError("GROQ_API_KEY no está definido")
+209:                 from groq import Groq
+210:                 client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+211:                 resp = client.chat.completions.create(
+212:                     model=LLM_MODEL or "llama-3.3-70b-versatile",
+213:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+214:                     temperature=0.1,
+215:                     response_format={"type": "json_object"}
+216:                 )
+217:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+218: 
+219:             if LLM_PROVIDER == "openai":
+220:                 if not OPENAI_API_KEY:
+221:                     raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+222:                 from openai import OpenAI
+223:                 client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+224:                 resp = client.chat.completions.create(
+225:                     model=LLM_MODEL or "gpt-4o-mini",
+226:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+227:                     temperature=0.1,
+228:                     timeout=LLM_TIMEOUT_SEC,
+229:                     response_format={"type": "json_object"},
+230:                 )
+231:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+232: 
+
+
+--- Around line 226 ---
+216:                 )
+217:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+218: 
+219:             if LLM_PROVIDER == "openai":
+220:                 if not OPENAI_API_KEY:
+221:                     raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+222:                 from openai import OpenAI
+223:                 client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+224:                 resp = client.chat.completions.create(
+225:                     model=LLM_MODEL or "gpt-4o-mini",
+226:                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+227:                     temperature=0.1,
+228:                     timeout=LLM_TIMEOUT_SEC,
+229:                     response_format={"type": "json_object"},
+230:                 )
+231:                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
+232: 
+233:             raise RuntimeError(f"LLM_PROVIDER no soportado para extract: {LLM_PROVIDER}")
+234:         except Exception as e:
+235:             if attempt == max_retries:
+236:                 raise e
+237:             sleep_time = attempt * 3
+238:             print(f"[LLM Extract] Error en intento {attempt}/{max_retries}: {e}. Reintentando en {sleep_time}s...")
+239:             time.sleep(sleep_time)
+240: 
+241: # =========================
+242: # JOB
+243: # =========================
+244: def analyze_job(grabacion_id: str) -> Dict[str, Any]:
+245:     """
+
+
+--- Around line 291 ---
+281:             )
+282:             db.commit()
+283:             return {"ok": False, "reason": "No hay transcripción"}
+284: 
+285:         transcripcion_id = str(row[0])
+286:         caja_id = str(row[1])
+287:         usuario_id = str(row[2]) if row[2] else None
+288:         base_fecha_hora_inicio = row[3]
+289:         contacto_id = str(row[4]) if row[4] else None
+290: 
+291:         # Get segments with timestamps and speaker labels
+292:         segments = db.execute(
+293:             text("SELECT id, inicio_segundo, fin_segundo, hablante, texto FROM public.segmentos_transcripcion WHERE transcripcion_id=CAST(:tid AS uuid) ORDER BY orden"),
+294:             {"tid": transcripcion_id}
+295:         ).fetchall()
+296: 
+297:         texto_con_tiempos = "\n".join([f"{i}. [{s[1]}s - {s[2]}s] {s[3] or 'UNKNOWN'}: {s[4]}" for i, s in enumerate(segments, start=1)])
+298: 
+299:         # Find if there is an EN_PROCESO atencion for this caja
+300:         open_atencion = db.execute(
+301:             text("SELECT id::text, texto_transcripcion FROM public.atenciones WHERE caja_id=CAST(:cid AS uuid) AND estado='EN_PROCESO' ORDER BY created_at DESC LIMIT 1"),
+302:             {"cid": caja_id}
+303:         ).first()
+304: 
+305:         texto_to_analyze = texto_con_tiempos
+306:         if open_atencion:
+307:             texto_to_analyze = (open_atencion[1] or "") + "\n\n" + texto_con_tiempos
+308: 
+309:         # Call LLM to extract
+310:         payload = {"texto_completo": texto_to_analyze[:120000]}
+
+
+--- Around line 293 ---
+283:             return {"ok": False, "reason": "No hay transcripción"}
+284: 
+285:         transcripcion_id = str(row[0])
+286:         caja_id = str(row[1])
+287:         usuario_id = str(row[2]) if row[2] else None
+288:         base_fecha_hora_inicio = row[3]
+289:         contacto_id = str(row[4]) if row[4] else None
+290: 
+291:         # Get segments with timestamps and speaker labels
+292:         segments = db.execute(
+293:             text("SELECT id, inicio_segundo, fin_segundo, hablante, texto FROM public.segmentos_transcripcion WHERE transcripcion_id=CAST(:tid AS uuid) ORDER BY orden"),
+294:             {"tid": transcripcion_id}
+295:         ).fetchall()
+296: 
+297:         texto_con_tiempos = "\n".join([f"{i}. [{s[1]}s - {s[2]}s] {s[3] or 'UNKNOWN'}: {s[4]}" for i, s in enumerate(segments, start=1)])
+298: 
+299:         # Find if there is an EN_PROCESO atencion for this caja
+300:         open_atencion = db.execute(
+301:             text("SELECT id::text, texto_transcripcion FROM public.atenciones WHERE caja_id=CAST(:cid AS uuid) AND estado='EN_PROCESO' ORDER BY created_at DESC LIMIT 1"),
+302:             {"cid": caja_id}
+303:         ).first()
+304: 
+305:         texto_to_analyze = texto_con_tiempos
+306:         if open_atencion:
+307:             texto_to_analyze = (open_atencion[1] or "") + "\n\n" + texto_con_tiempos
+308: 
+309:         # Call LLM to extract
+310:         payload = {"texto_completo": texto_to_analyze[:120000]}
+311:         try:
+312:             out = call_llm_extract(payload)
+
+
+--- Around line 328 ---
+318:         atenciones_list = out.get("atenciones", [])
+319:         if not atenciones_list:
+320:             print("[LLM Extract] No se extrajo ninguna atención. Creando atención por defecto para toda la grabación.")
+321:             duracion_total = float(segments[-1][2]) if segments else 0.0
+322:             atenciones_list = [{
+323:                 "estado": "COMPLETADA",
+324:                 "inicio_segundo": 0.0,
+325:                 "fin_segundo": duracion_total
+326:             }]
+327: 
+328:         # 1) Establecer Baseline a nivel de hablante (Pyannote)
+329:         cajero_spk = out.get("cajero_speaker")
+330:         if cajero_spk and isinstance(cajero_spk, str):
+331:             cajero_spk = cajero_spk.strip().upper().replace(" ", "_").replace("-", "_")
+332:             if cajero_spk in ["0", "00", "SPEAKER_0", "SPEAKER_00"]:
+333:                 cajero_spk = "SPEAKER_00"
+334:             elif cajero_spk in ["1", "01", "SPEAKER_1", "SPEAKER_01"]:
+335:                 cajero_spk = "SPEAKER_01"
+336:             elif not cajero_spk.startswith("SPEAKER_"):
+337:                 import re
+338:                 match = re.search(r"SPEAKER[_\s\-]?(\d+)", cajero_spk)
+339:                 if match:
+340:                     num = int(match.group(1))
+341:                     cajero_spk = f"SPEAKER_{num:02d}"
+342:                 else:
+343:                     cajero_spk = None
+344:         else:
+345:             cajero_spk = None
+346: 
+347:         if cajero_spk:
+
+
+--- Around line 329 ---
+319:         if not atenciones_list:
+320:             print("[LLM Extract] No se extrajo ninguna atención. Creando atención por defecto para toda la grabación.")
+321:             duracion_total = float(segments[-1][2]) if segments else 0.0
+322:             atenciones_list = [{
+323:                 "estado": "COMPLETADA",
+324:                 "inicio_segundo": 0.0,
+325:                 "fin_segundo": duracion_total
+326:             }]
+327: 
+328:         # 1) Establecer Baseline a nivel de hablante (Pyannote)
+329:         cajero_spk = out.get("cajero_speaker")
+330:         if cajero_spk and isinstance(cajero_spk, str):
+331:             cajero_spk = cajero_spk.strip().upper().replace(" ", "_").replace("-", "_")
+332:             if cajero_spk in ["0", "00", "SPEAKER_0", "SPEAKER_00"]:
+333:                 cajero_spk = "SPEAKER_00"
+334:             elif cajero_spk in ["1", "01", "SPEAKER_1", "SPEAKER_01"]:
+335:                 cajero_spk = "SPEAKER_01"
+336:             elif not cajero_spk.startswith("SPEAKER_"):
+337:                 import re
+338:                 match = re.search(r"SPEAKER[_\s\-]?(\d+)", cajero_spk)
+339:                 if match:
+340:                     num = int(match.group(1))
+341:                     cajero_spk = f"SPEAKER_{num:02d}"
+342:                 else:
+343:                     cajero_spk = None
+344:         else:
+345:             cajero_spk = None
+346: 
+347:         if cajero_spk:
+348:             db.execute(
+
+
+--- Around line 349 ---
+339:                 if match:
+340:                     num = int(match.group(1))
+341:                     cajero_spk = f"SPEAKER_{num:02d}"
+342:                 else:
+343:                     cajero_spk = None
+344:         else:
+345:             cajero_spk = None
+346: 
+347:         if cajero_spk:
+348:             db.execute(
+349:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante=:spk"),
+350:                 {"tid": transcripcion_id, "spk": cajero_spk}
+351:             )
+352:             db.execute(
+353:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante!=:spk OR hablante IS NULL)"),
+354:                 {"tid": transcripcion_id, "spk": cajero_spk}
+355:             )
+356:         else:
+357:             # Fallback si no se detecta cajero_speaker: SPEAKER_00 por defecto es Cajero
+358:             db.execute(
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+
+
+--- Around line 353 ---
+343:                     cajero_spk = None
+344:         else:
+345:             cajero_spk = None
+346: 
+347:         if cajero_spk:
+348:             db.execute(
+349:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante=:spk"),
+350:                 {"tid": transcripcion_id, "spk": cajero_spk}
+351:             )
+352:             db.execute(
+353:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante!=:spk OR hablante IS NULL)"),
+354:                 {"tid": transcripcion_id, "spk": cajero_spk}
+355:             )
+356:         else:
+357:             # Fallback si no se detecta cajero_speaker: SPEAKER_00 por defecto es Cajero
+358:             db.execute(
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+
+
+--- Around line 357 ---
+347:         if cajero_spk:
+348:             db.execute(
+349:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante=:spk"),
+350:                 {"tid": transcripcion_id, "spk": cajero_spk}
+351:             )
+352:             db.execute(
+353:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante!=:spk OR hablante IS NULL)"),
+354:                 {"tid": transcripcion_id, "spk": cajero_spk}
+355:             )
+356:         else:
+357:             # Fallback si no se detecta cajero_speaker: SPEAKER_00 por defecto es Cajero
+358:             db.execute(
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+
+
+--- Around line 359 ---
+349:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante=:spk"),
+350:                 {"tid": transcripcion_id, "spk": cajero_spk}
+351:             )
+352:             db.execute(
+353:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante!=:spk OR hablante IS NULL)"),
+354:                 {"tid": transcripcion_id, "spk": cajero_spk}
+355:             )
+356:         else:
+357:             # Fallback si no se detecta cajero_speaker: SPEAKER_00 por defecto es Cajero
+358:             db.execute(
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+
+
+--- Around line 363 ---
+353:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante!=:spk OR hablante IS NULL)"),
+354:                 {"tid": transcripcion_id, "spk": cajero_spk}
+355:             )
+356:         else:
+357:             # Fallback si no se detecta cajero_speaker: SPEAKER_00 por defecto es Cajero
+358:             db.execute(
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+
+
+--- Around line 368 ---
+358:             db.execute(
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+
+
+--- Around line 369 ---
+359:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+
+
+--- Around line 370 ---
+360:                 {"tid": transcripcion_id}
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+
+
+--- Around line 371 ---
+361:             )
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+
+
+--- Around line 372 ---
+362:             db.execute(
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+
+
+--- Around line 373 ---
+363:                 text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+
+
+--- Around line 374 ---
+364:                 {"tid": transcripcion_id}
+365:             )
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+
+
+--- Around line 376 ---
+366: 
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+
+
+--- Around line 377 ---
+367:         # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+
+
+--- Around line 378 ---
+368:         roles_seg = out.get("roles_segmentos")
+369:         role_list = []
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+
+
+--- Around line 380 ---
+370:         if isinstance(roles_seg, str) and roles_seg:
+371:             role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+398:             # Clean up old general summaries for this recording
+399:             db.execute(
+
+
+--- Around line 382 ---
+372:         elif isinstance(roles_seg, list):
+373:             role_list = [str(r).strip().upper() for r in roles_seg]
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+398:             # Clean up old general summaries for this recording
+399:             db.execute(
+400:                 text("DELETE FROM public.analisis_general WHERE grabacion_id=CAST(:gid AS uuid) AND atencion_id IS NULL"),
+401:                 {"gid": grabacion_id}
+
+
+--- Around line 384 ---
+374:         elif isinstance(roles_seg, dict):
+375:             try:
+376:                 max_idx = max([int(k) for k in roles_seg.keys() if str(k).isdigit()] or [0])
+377:                 role_list = [None] * max_idx
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+398:             # Clean up old general summaries for this recording
+399:             db.execute(
+400:                 text("DELETE FROM public.analisis_general WHERE grabacion_id=CAST(:gid AS uuid) AND atencion_id IS NULL"),
+401:                 {"gid": grabacion_id}
+402:             )
+403:             db.execute(
+
+
+--- Around line 388 ---
+378:                 for k, v in roles_seg.items():
+379:                     if str(k).isdigit():
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+398:             # Clean up old general summaries for this recording
+399:             db.execute(
+400:                 text("DELETE FROM public.analisis_general WHERE grabacion_id=CAST(:gid AS uuid) AND atencion_id IS NULL"),
+401:                 {"gid": grabacion_id}
+402:             )
+403:             db.execute(
+404:                 text(
+405:                     "INSERT INTO public.analisis_general "
+406:                     "(grabacion_id, atencion_id, resumen_ejecutivo, sentimiento_general, calificacion_general, fecha_analisis) "
+407:                     "VALUES (CAST(:gid AS uuid), NULL, :res, :sent, NULL, :fa)"
+
+
+--- Around line 390 ---
+380:                         role_list[int(k) - 1] = str(v).strip().upper()
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+398:             # Clean up old general summaries for this recording
+399:             db.execute(
+400:                 text("DELETE FROM public.analisis_general WHERE grabacion_id=CAST(:gid AS uuid) AND atencion_id IS NULL"),
+401:                 {"gid": grabacion_id}
+402:             )
+403:             db.execute(
+404:                 text(
+405:                     "INSERT INTO public.analisis_general "
+406:                     "(grabacion_id, atencion_id, resumen_ejecutivo, sentimiento_general, calificacion_general, fecha_analisis) "
+407:                     "VALUES (CAST(:gid AS uuid), NULL, :res, :sent, NULL, :fa)"
+408:                 ),
+409:                 {"gid": grabacion_id, "res": resumen_gr, "sent": sentimiento_gr, "fa": utcnow()}
+
+
+--- Around line 391 ---
+381:             except Exception as e:
+382:                 log.warning("Error al parsear roles_segmentos dict: %s", e)
+383: 
+384:         for idx, r_char in enumerate(role_list):
+385:             if r_char and idx < len(segments):
+386:                 seg_id = segments[idx][0]
+387:                 # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
+388:                 val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
+389:                 db.execute(
+390:                     text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
+391:                     {"role": val_role, "id": str(seg_id)}
+392:                 )
+393: 
+394:         # Save general summary row for the whole recording (atencion_id = NULL)
+395:         resumen_gr = (out.get("resumen_general") or "").strip()
+396:         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
+397:         if resumen_gr:
+398:             # Clean up old general summaries for this recording
+399:             db.execute(
+400:                 text("DELETE FROM public.analisis_general WHERE grabacion_id=CAST(:gid AS uuid) AND atencion_id IS NULL"),
+401:                 {"gid": grabacion_id}
+402:             )
+403:             db.execute(
+404:                 text(
+405:                     "INSERT INTO public.analisis_general "
+406:                     "(grabacion_id, atencion_id, resumen_ejecutivo, sentimiento_general, calificacion_general, fecha_analisis) "
+407:                     "VALUES (CAST(:gid AS uuid), NULL, :res, :sent, NULL, :fa)"
+408:                 ),
+409:                 {"gid": grabacion_id, "res": resumen_gr, "sent": sentimiento_gr, "fa": utcnow()}
+410:             )
+

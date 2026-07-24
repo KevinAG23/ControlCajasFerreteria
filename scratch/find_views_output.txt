@@ -1,0 +1,150 @@
+Line 431:     if (inline) return innerContent;
+Line 432: 
+Line 433:     return (
+Line 434:         <div style={{
+Line 435:             position: 'fixed', inset: 0,
+Line 436:             background: 'rgba(59,29,17,0.4)', backdropFilter: 'blur(8px)',
+Line 437:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+Line 438:             zIndex: 11000, padding: '1.5rem',
+Line 439:         }}>
+Line 440:                                 background: 'white', border: '1px solid #fed7aa',
+Line 441:                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+Line 442:                                 boxShadow: '0 4px 12px rgba(59,29,17,0.03)',
+Line 443:                             }}>
+Line 444:                                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#ea580c', marginBottom: '0.5rem' }}><IconStar /></span>
+Line 445:                                 <span style={{ fontSize: '0.65rem', color: '#7c6a5f', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.3rem' }}>Calificación</span>
+Line 446:                                 <span style={{ fontSize: '2.8rem', fontWeight: '900', color: scoreColor, lineHeight: 1 }}>{score}</span>
+Line 447:                                 <span style={{ fontSize: '0.72rem', color: '#9e8c81', marginTop: '0.2rem' }}>de 100</span>
+Line 448:                                 {/* Progress arc  */}
+Line 449:                                 <div style={{ width: '100%', height: '4px', background: '#f3e8dc', borderRadius: '99px', marginTop: '0.75rem', overflow: 'hidden' }}>
+Line 450:                                     <div style={{ height: '100%', width: `${score}%`, background: scoreColor, borderRadius: '99px', transition: 'width 1s ease' }} />
+Line 451:                                 </div>
+Line 452:                             </div>
+Line 453: 
+Line 454:                             <div style={{
+Line 455:                                 borderRadius: '18px', padding: '1.25rem',
+Line 456:                                 background: sent.bg,
+Line 457:                                 border: `1px solid ${sent.border}`,
+Line 458:                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+Line 459:                                 boxShadow: '0 4px 12px rgba(59,29,17,0.03)',
+Line 460:                             }}>
+Line 461:                                 <span style={{ fontSize: '2.5rem', marginBottom: '0.4rem' }}>{sent.emoji}</span>
+Line 462:                                 <span style={{ fontSize: '0.65rem', color: '#7c6a5f', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>Sentimiento</span>
+Line 463:                                 <span style={{ fontSize: '1rem', fontWeight: '800', color: sent.color }}>{sent.label}</span>
+Line 464:                             </div>
+Line 465:                         </div>
+Line 466: 
+Line 467:                         {/* Bar chart – numeric metrics */}
+Line 468:                         {numericEvals.length > 0 && (
+Line 469:                             <div style={{ background: 'white', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(59,29,17,0.03)' }}>
+Line 470:                                 <p style={{ margin: '0 0 0.25rem', fontWeight: '700', fontSize: '0.88rem', color: '#431407' }}>Métricas Numéricas</p>
+Line 471:                                 <p style={{ margin: '0 0 1rem', fontSize: '0.72rem', color: '#7c6a5f' }}>Puntajes obtenidos por escala</p>
+Line 472:                                 <div style={{ height: 200 }}>
+Line 473:                                     <ResponsiveContainer>
+Line 474:                                         <BarChart data={numericEvals} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+Line 475:                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3e8dc" />
+Line 476:                                             <XAxis dataKey="pregunta_texto" tick={{ fontSize: 10, fill: '#7c6a5f' }} tickFormatter={v => v.substring(0, 10) + '…'} axisLine={false} tickLine={false} />
+Line 477:                                             <YAxis tick={{ fontSize: 10, fill: '#7c6a5f' }} axisLine={false} tickLine={false} />
+Line 478:                                             <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(234,88,12,0.03)' }} />
+Line 479:                                             <Bar dataKey="puntaje" radius={[6, 6, 0, 0]} maxBarSize={44}>
+Line 480:                                                 {numericEvals.map((entry, i) => (
+Line 481:                                                     <Cell key={i} fill={entry.puntaje >= 8 ? '#10b981' : entry.puntaje >= 5 ? '#f59e0b' : '#ef4444'} />
+Line 482:                                                 ))}
+Line 483:                                             </Bar>
+Line 484:                                         </BarChart>
+Line 485:                                     </ResponsiveContainer>
+Line 486:                                 </div>
+Line 487:                             </div>
+Line 488:                         )}
+Line 489: 
+Line 490:                         {/* Radar chart – boolean metrics */}
+Line 491:                         {radarData.length > 1 && (
+Line 492:                             <div style={{ background: 'white', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(59,29,17,0.03)' }}>
+Line 493:                                 <p style={{ margin: '0 0 0.25rem', fontWeight: '700', fontSize: '0.88rem', color: '#431407' }}>Perfil de Cumplimiento</p>
+Line 494:                                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', color: '#7c6a5f' }}>Porcentaje por métrica</p>
+Line 495:                                 <div style={{ height: 200 }}>
+Line 496:                                     <ResponsiveContainer>
+Line 497:                                         <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarData}>
+Line 498:                                             <PolarGrid stroke="#f3e8dc" />
+Line 499:                                             <PolarAngleAxis dataKey="subject" tick={{ fill: '#7c6a5f', fontSize: 9 }} />
+Line 500:                                             <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+Line 501:                                             <Radar dataKey="value" stroke="#ea580c" fill="#ea580c" fillOpacity={0.2} strokeWidth={2} />
+Line 502:                                         </RadarChart>
+Line 503:                                     </ResponsiveContainer>
+Line 504:                                 </div>
+Line 505:                             </div>
+Line 506:                         )}
+Line 507: 
+Line 508:                         {/* Resumen ejecutivo */}
+Line 509:                         {analysis.resumen_ejecutivo && (
+Line 510:                             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(234,88,12,0.04)' }}>
+Line 511:                                 <p style={{ margin: '0 0 0.75rem', fontWeight: '700', fontSize: '0.88rem', color: '#ea580c' }}>Resumen Ejecutivo</p>
+Line 512:                                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#4f3e35', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+Line 513:                                     {analysis.resumen_ejecutivo}
+Line 514:                                 </p>
+Line 515:                             </div>
+Line 516:                         )}
+Line 517:                     </div>
+Line 518: 
+Line 519: 
+Line 520:                     {/* RIGHT PANEL – evaluations + transcript */}
+Line 521:                     <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+Line 522: 
+Line 523:                         {/* Compliance metrics summary header */}
+Line 524:                         <div style={{
+Line 525:                             background: 'white',
+Line 526:                             border: '1px solid #fed7aa',
+Line 527:                             borderRadius: '20px',
+Line 528:                             padding: '1.25rem 1.5rem',
+Line 529:                             display: 'flex',
+Line 530:                             alignItems: 'center',
+Line 531:                             justifyContent: 'space-between',
+Line 532:                             gap: '1rem',
+Line 533:                             flexWrap: 'wrap',
+Line 534:                             boxShadow: '0 4px 12px rgba(59,29,17,0.03)',
+Line 535:                         }}>
+Line 536:                             <div>
+Line 537:                                 <h4 style={{ margin: 0, color: '#431407', fontSize: '1rem', fontWeight: '800' }}>Nivel de Cumplimiento</h4>
+Line 538:                                 <p style={{ margin: '0.2rem 0 0', color: '#7c6a5f', fontSize: '0.8rem' }}>
+Line 539:                                     {passedEvals} de {totalEvals} estándares cubiertos con éxito
+Line 540:                                 </p>
+Line 541:                             </div>
+Line 542:                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+Line 543:                                 <div style={{ textAlign: 'right' }}>
+Line 544:                                     <span style={{
+Line 545:                                         fontSize: '1.8rem',
+Line 546:                                         fontWeight: '900',
+Line 547:                                         color: compliancePercent >= 80 ? '#10b981' : compliancePercent >= 50 ? '#f59e0b' : '#ef4444'
+Line 548:                                     }}>
+Line 549:                                         {compliancePercent}%
+Line 550:                                     </span>
+Line 551:                                 </div>
+Line 552:                                 <div style={{
+Line 553:                                     width: '60px',
+Line 554:                                     height: '60px',
+Line 555:                                     position: 'relative',
+Line 556:                                     display: 'flex',
+Line 557:                                     alignItems: 'center',
+Line 558:                                     justifyContent: 'center',
+Line 559:                                     background: '#f3e8dc',
+Line 560:                                     borderRadius: '50%',
+Line 561:                                     border: `3px solid #e5d5c5`
+Line 562:                                 }}>
+Line 563:                                     <div style={{
+Line 564:                                         position: 'absolute',
+Line 565:                                         inset: -3,
+Line 566:                                         borderRadius: '50%',
+Line 567:                                         border: '3px solid transparent',
+Line 568:                                         borderTopColor: compliancePercent >= 80 ? '#10b981' : compliancePercent >= 50 ? '#f59e0b' : '#ef4444',
+Line 569:                                         transform: `rotate(${compliancePercent * 3.6}deg)`,
+Line 570:                                         transition: 'transform 0.5s ease'
+Line 571:                                     }} />
+Line 572:                                     <span style={{ fontSize: '1.25rem' }}>📊</span>
+Line 573:                                 </div>
+Line 574:                             </div>
+Line 575:                         </div>
+Line 576: 
+Line 577:                         {/* Oportunidades de Mejora / Optimización */}
+Line 578:                         {failedEvals.length > 0 && (
+Line 579:                             <div>
+Line 580:                                 <p style={{ margin: '0 0 1rem', fontWeight: '800', fontSize: '0.95rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

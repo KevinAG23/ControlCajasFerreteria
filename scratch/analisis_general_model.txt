@@ -1,0 +1,30 @@
+171: class AnalisisGeneral(Base):
+172:     __tablename__ = "analisis_general"
+173: 
+174:     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+175:     grabacion_id = Column(UUID(as_uuid=True), ForeignKey("grabaciones.id", ondelete="CASCADE"), nullable=True) # Retained for old data
+176:     atencion_id = Column(UUID(as_uuid=True), ForeignKey("atenciones.id", ondelete="CASCADE"), nullable=True)
+177:     resumen_ejecutivo = Column(Text)
+178:     sentimiento_general = Column(String(20))
+179:     calificacion_general = Column(Numeric(5, 2))
+180:     fecha_analisis = Column(DateTime(timezone=True), server_default=func.now())
+181: 
+182:     grabacion = relationship("Grabacion", back_populates="analisis")
+183:     atencion = relationship("Atencion", back_populates="analisis")
+184:     respuestas = relationship("RespuestaEvaluacion", back_populates="analisis", cascade="all, delete-orphan")
+185: 
+186: class RespuestaEvaluacion(Base):
+187:     __tablename__ = "respuestas_evaluacion"
+188: 
+189:     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+190:     analisis_id = Column(UUID(as_uuid=True), ForeignKey("analisis_general.id", ondelete="CASCADE"), nullable=False)
+191:     pregunta_id = Column(UUID(as_uuid=True), ForeignKey("catalogo_preguntas.id"), nullable=False)
+192:     segmento_evidencia_id = Column(UUID(as_uuid=True), ForeignKey("segmentos_transcripcion.id"))
+193:     respuesta_booleana = Column(Boolean)
+194:     puntaje_obtenido = Column(Numeric(4, 2))
+195:     justificacion_ia = Column(Text)
+196:     created_at = Column(DateTime(timezone=True), server_default=func.now())
+197: 
+198:     analisis = relationship("AnalisisGeneral", back_populates="respuestas")
+199:     pregunta = relationship("CatalogoPreguntas")
+200:     evidencia = relationship("SegmentoTranscripcion")

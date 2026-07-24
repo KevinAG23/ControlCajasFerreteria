@@ -1,0 +1,22 @@
+ro",
+        cajaAsignada: ""
+    });
+
+    // New Modals State
+    const [selectedCashierForDetail, setSelectedCashierForDetail] = useState(null);
+    const [selectedBoxForDetail, setSelectedBoxForDetail] = useState(null);
+    const [selectedCashierForClients, setSelectedCashierForClients] = useState(null);
+
+
+    // Fetch Data on Mount
+    const loadData = async () => {
+        try {
+            const [usersData, contactsData, rolesData, cajasData, grabacionesData] = await Promise.all([
+                getUsers(),
+                getContacts(),
+                getRoles(),
+                getCajasDB(),
+                getGrabaciones()
+            ]);
+            setUsers(usersData);
+         

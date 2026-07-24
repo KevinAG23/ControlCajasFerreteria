@@ -1,0 +1,34 @@
+--- Around line 483 ---
+478:             _ = TickAsync();
+479:             LogService.Info("Settings updated via SettingsWindow.");
+480:         }
+481:     }
+482: 
+483:     public async void PowerOffManually()
+484:     {
+485:         _manualHold = true;
+486:         _segmentStart = null;
+487: 
+488:         if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
+489:             await _recorder.StopAsync();
+490: 
+491:         _settings = SafeLoadSettings();
+492:         _settings.GrabacionHabilitada = false;
+493:         _settingsService.Save(_settings);
+494: 
+495:         _indicator.SetPoweredOff();
+496:         LogService.Info("PowerOffManually executed (GrabacionHabilitada=false).");
+497:     }
+498: }
+
+
+--- Around line 496 ---
+491:         _settings = SafeLoadSettings();
+492:         _settings.GrabacionHabilitada = false;
+493:         _settingsService.Save(_settings);
+494: 
+495:         _indicator.SetPoweredOff();
+496:         LogService.Info("PowerOffManually executed (GrabacionHabilitada=false).");
+497:     }
+498: }
+

@@ -1,0 +1,50 @@
+Line 336: Line 366:                                                 borderRadius: '16px',
+Line 337: Line 367:                                                 padding: '1.25rem 1.5rem',
+Line 338: Line 368:                                                 gap: '0.6rem',
+Line 339: Line 369:                                                 boxShadow: '0 4px 12px rgba(59,29,17,0.02)',
+Line 340: Line 370:                                                 border: `1px solid ${isCajero ? '#e0f2fe' : '#ffedd5'}`,
+Line 341: Line 371:                                                 borderLeftWidth: '4px',
+Line 342: Line 372:                                             }}>
+Line 343: Line 373:                                                 <div style={{
+Line 344: Line 374:                                                     display: 'flex',
+Line 345: Line 375:                                                     alignItems: 'center',
+Line 346: Line 376:                                                     justifyContent: 'space-between',
+Line 347: Line 377:                                                     borderBottom: `1px solid ${isCajero ? '#e0f2fe' : '#ffedd5'}`,
+Line 348: Line 378:                                                     paddingBottom: '0.4rem',
+Line 349: Line 379:                                                     marginBottom: '0.25rem'
+Line 350: Line 380:                                                 }}>
+Line 351: Line 381:                                                     <span style={{
+Line 352: Line 382:                                                         color: isCajero ? '#0369a1' : '#c2410c',
+Line 353: Line 383:                                                         fontWeight: '800',
+Line 354: Line 384:                                                         fontSize: '0.85rem',
+Line 355: Line 385:                                                         textTransform: 'uppercase',
+Line 356: Line 386:                                                         letterSpacing: '0.05em',
+Line 357: Line 387:                                                         display: 'flex',
+Line 358: Line 388:                                                         alignItems: 'center',
+Line 359: Line 389:                                                         gap: '0.4rem'
+Line 360: Line 390:                                                     }}>
+Line 361: Line 391:                                                         {isCajero ? '👤 Cajero (Agente)' : '👥 Usuario (Cliente)'}
+Line 362: Line 392:                                                     </span>
+Line 363: Line 393:                                                 </div>
+Line 364: Line 394:                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+Line 365: Line 395:                                                     {group.texts.map((t, tIdx) => (
+Line 366: Line 396:                                                         <div key={tIdx} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+Line 367: Line 397:                                                             {t.inicio !== null && (
+Line 368: Line 398:                                                                 <span style={{
+Line 369: Line 399:                                                                     color: '#94a3b8',
+Line 370: Line 400:                                                                     fontSize: '0.75rem',
+Line 371: Line 401:                                                                     fontFamily: 'monospace',
+Line 372: Line 402:                                                                     whiteSpace: 'nowrap',
+Line 373: Line 403:                                                                     minWidth: '100px'
+Line 374: Line 404:                                                                 }}>
+Line 375: Line 405:                                                                     [{t.inicio.toFixed(2)}s - {t.fin.toFixed(2)}s]
+Line 376: Line 406:                                                                 </span>
+Line 377: Line 407:                                                             )}
+Line 378: Line 408:                                                             <span style={{
+Line 379: Line 409:                                                                 color: '#334155',
+Line 380: Line 410:                                                                 fontSize: '0.92rem',
+Line 381: Line 411:                                                                 lineHeight: '1.6',
+Line 382: Line 412:                                                                 fontFamily: 'system-ui, -apple-system, sans-serif'
+Line 383: Line 413:                                                             }}>
+Line 384: Line 414:                                                                 {t.text}
+Line 385: Line 415:                                                             </span>

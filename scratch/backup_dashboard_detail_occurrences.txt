@@ -1,0 +1,73 @@
+--- Occurrence at character 14374 ---
+d: "",
+        role: "cajero",
+        cajaAsignada: ""
+    });
+
+    // New Modals State
+    const [selectedCashierForDetail, setSelectedCashierForDetail] = useState(null);
+    const [selectedBoxForDetail, setSelectedBoxForDetail] = useState(null);
+    const [selectedCashierForClients, setSelectedCashierForClients] = useState(null);
+
+
+    // Fetch 
+--- Occurrence at character 14403 ---
+,
+        cajaAsignada: ""
+    });
+
+    // New Modals State
+    const [selectedCashierForDetail, setSelectedCashierForDetail] = useState(null);
+    const [selectedBoxForDetail, setSelectedBoxForDetail] = useState(null);
+    const [selectedCashierForClients, setSelectedCashierForClients] = useState(null);
+
+
+    // Fetch Data on Mount
+    const loadD
+--- Occurrence at character 68910 ---
+                           users={users}
+                                        onViewAnalysis={setSelectedCashierForDetail}
+                                        onViewClients={setSelectedCashierForClients}
+                                    />
+                                </div>
+                            )}
+                        </div>
+--- Occurrence at character 191187 ---
+
+            )
+            }
+
+            {/* USER CREATION MODAL */}
+            {
+                selectedCashierForDetail && (
+                    <CashierDetailModal
+                        cashier={selectedCashierForDetail}
+                        onClose={() => setSelectedCashierForDetail(null)}
+                    />
+                )
+      
+--- Occurrence at character 191290 ---
+ectedCashierForDetail && (
+                    <CashierDetailModal
+                        cashier={selectedCashierForDetail}
+                        onClose={() => setSelectedCashierForDetail(null)}
+                    />
+                )
+            }
+
+            {
+                selectedBoxForDetail && (
+                    <BoxDetailModal
+  
+--- Occurrence at character 191358 ---
+                       cashier={selectedCashierForDetail}
+                        onClose={() => setSelectedCashierForDetail(null)}
+                    />
+                )
+            }
+
+            {
+                selectedBoxForDetail && (
+                    <BoxDetailModal
+                        box={selectedBoxForDetail}
+                   

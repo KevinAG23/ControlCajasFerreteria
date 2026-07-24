@@ -1,0 +1,72 @@
+<Window x:Class="CajaRecorderAgent.Views.IndicatorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="125" Height="115"
+        Icon="pack://application:,,,/Assets/logo.ico"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <!-- Contenedor principal (semi-transparente) -->
+    <Border x:Name="RootBorder"
+            CornerRadius="20"
+            BorderThickness="2"
+            BorderBrush="#99E7BFA2"
+            Padding="8"
+            Opacity="0.85"
+            Background="#FFFDF3EA"
+            MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
+
+        <!-- Sombra suave -->
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.28"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Círculo central con ícono -->
+            <Border x:Name="Circle"
+                    Grid.Row="0"
+                    CornerRadius="999"
+                    Background="#FFF59E5B"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Top"
+                    Width="48" Height="48"
+                    Margin="0,5,0,0">
+                <TextBlock x:Name="TxtIcon"
+                           Text="■"
+                           FontSize="22"
+                           FontWeight="Black"
+                           Foreground="White"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- Label APAGADO (solo visible cuando está apagado) -->
+            <TextBlock x:Name="TxtPoweredOffLabel"
+                       Grid.Row="1"
+                       Text="APAGADO"
+                       FontSize="11"
+                       FontWeight="Bold"
+                       Foreground="#FF888888"
+                       HorizontalAlignment="Center"
+                       Margin="0,4,0,0"
+                       Visibility="Collapsed"/>
+
+            <!-- Panel de estado servidor/transmisión (visible en estados activos) -->
+            <StackPanel x:Name="StatusPanel" Grid.Row="2" VerticalAlignment="Bottom" HorizontalAlignment="Left" Margin="2,4,0,0">
+                <TextBlock x:Name="TxtServerStatus" Text="Servidor OK" FontSize="11" Foreground="Gray" Opacity="0.85" ToolTip="Estado del servidor" />
+                <TextBlock x:Name="TxtTransmission" Text="Sin transmisión" FontSize="11" Foreground="Gray" Opacity="0.85" ToolTip="Estado de transmisión" />
+            </StackPanel>
+        </Grid>
+
+    </Border>
+</Window>

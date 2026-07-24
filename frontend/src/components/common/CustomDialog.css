@@ -1,0 +1,205 @@
+/* Custom Dialog Overlay styling */
+.custom-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(67, 20, 7, 0.4); /* warm translucency */
+  backdrop-filter: blur(8px); /* sleek modern blur */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  animation: dialogFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Modal container styling */
+.custom-dialog-container {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 25px -5px rgba(67, 20, 7, 0.1), 
+              0 10px 10px -5px rgba(67, 20, 7, 0.04),
+              0 0 0 1px rgba(254, 215, 170, 0.5); /* subtle warm border */
+  padding: 2.25rem 2rem;
+  width: 95%;
+  max-width: 400px;
+  text-align: center;
+  transform: scale(0.95) translateY(10px);
+  animation: dialogScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Animated SVGs for Success/Info/Error */
+.custom-dialog-icon-wrapper {
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.custom-dialog-svg {
+  width: 72px;
+  height: 72px;
+  display: block;
+}
+
+/* Success Checkmark drawing animation */
+.success-circle {
+  stroke: #10b981; /* Success Green */
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: dialogStroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.success-check {
+  stroke: #10b981;
+  stroke-width: 3;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  animation: dialogStroke 0.35s cubic-bezier(0.65, 0, 0.45, 1) 0.5s forwards;
+}
+
+/* Info Icon drawing animation */
+.info-circle {
+  stroke: #fb923c; /* Theme Orange */
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: dialogStroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.info-line {
+  stroke: #fb923c;
+  stroke-width: 3;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+  animation: dialogStroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+}
+
+.info-dot {
+  fill: #fb923c;
+  opacity: 0;
+  animation: dialogFadeIn 0.3s ease-out 0.6s forwards;
+}
+
+/* Error Cross drawing animation */
+.error-circle {
+  stroke: #ef4444; /* Error Red */
+  stroke-width: 2;
+  fill: none;
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  animation: dialogStroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.error-cross-1, .error-cross-2 {
+  stroke: #ef4444;
+  stroke-width: 3;
+  stroke-linecap: round;
+  fill: none;
+  stroke-dasharray: 22;
+  stroke-dashoffset: 22;
+}
+
+.error-cross-1 {
+  animation: dialogStroke 0.25s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+}
+
+.error-cross-2 {
+  animation: dialogStroke 0.25s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
+}
+
+/* Typography styles */
+.custom-dialog-title {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e1b4b; /* deep contrast indigo/black */
+  margin: 0 0 0.75rem 0;
+  line-height: 1.25;
+}
+
+.custom-dialog-message {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1rem;
+  color: #4b5563; /* warm grey */
+  margin: 0 0 1.75rem 0;
+  line-height: 1.5;
+}
+
+/* Buttons container */
+.custom-dialog-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+/* Custom premium button base */
+.custom-dialog-btn {
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.75rem 1.75rem;
+  border-radius: 0.75rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.custom-dialog-btn:active {
+  transform: scale(0.97);
+}
+
+/* Primary Action Button (Blue styled like the user example) */
+.custom-dialog-btn-primary {
+  background-color: #2563eb; /* Royal Blue */
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);
+}
+
+.custom-dialog-btn-primary:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.3);
+}
+
+/* Secondary Cancel Button */
+.custom-dialog-btn-secondary {
+  background-color: #9ca3af; /* Cool grey */
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(156, 163, 175, 0.15);
+}
+
+.custom-dialog-btn-secondary:hover {
+  background-color: #4b5563;
+  box-shadow: 0 6px 14px rgba(156, 163, 175, 0.25);
+}
+
+/* Keyframes */
+@keyframes dialogFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dialogScaleIn {
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dialogStroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

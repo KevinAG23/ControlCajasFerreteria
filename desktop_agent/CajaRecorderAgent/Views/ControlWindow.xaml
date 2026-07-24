@@ -1,0 +1,170 @@
+<Window x:Class="CajaRecorderAgent.Views.ControlWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Control"
+        Height="230"
+        Width="520"
+        Icon="pack://application:,,,/Assets/logo.ico"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#FFF7F1EB">
+
+    <!-- =======================
+         Recursos / Estilos
+         ======================= -->
+    <Window.Resources>
+
+        <!-- Botón naranja suave (Pausar / Reanudar) -->
+        <Style x:Key="SoftOrangeButton" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="14"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Background">
+                <Setter.Value>
+                    <!-- Naranja suave difuminado -->
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#FFF7B889" Offset="0"/>
+                        <GradientStop Color="#FFF59E5B" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Botón neutro (Configurar / Apagar) -->
+        <Style x:Key="NeutralButton" TargetType="Button">
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border CornerRadius="14"
+                                Background="{TemplateBinding Background}">
+                            <ContentPresenter
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </Window.Resources>
+
+    <!-- =======================
+         Contenido
+         ======================= -->
+    <Grid Margin="18">
+        <Border CornerRadius="18"
+                BorderThickness="1"
+                BorderBrush="#FFF2C9A9"
+                Padding="18">
+
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FFFFFFFF" Offset="0"/>
+                    <GradientStop Color="#FFFDF3EA" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="16"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- ========= Header ========= -->
+                <DockPanel>
+                    <Border Width="30"
+                            Height="30"
+                            CornerRadius="15"
+                            Margin="0,0,10,0">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#FFF59E5B" Offset="0"/>
+                                <GradientStop Color="#FFEA6A00" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+
+                        <TextBlock Text="⚙"
+                                   Foreground="White"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel>
+                        <TextBlock Text="Panel de Control"
+                                   FontSize="16"
+                                   FontWeight="Bold"
+                                   Foreground="#FF5B3A2A"/>
+                        <TextBlock x:Name="TxtState"
+                                   FontSize="13"
+                                   Foreground="#FF9B7A63"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- ========= Botones ========= -->
+                <StackPanel Grid.Row="2"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right">
+
+                    <!-- Configurar -->
+                    <Button x:Name="BtnConfig"
+                            Content="Configurar"
+                            Width="110"
+                            Margin="0,0,10,0"
+                            Click="Config_Click"
+                            Background="#FFF0E6DD"
+                            Foreground="#FF6A4A3A"
+                            Style="{StaticResource NeutralButton}"/>
+
+                    <!-- Pausar -->
+                    <Button x:Name="BtnPause"
+                            Content="Pausar"
+                            Width="90"
+                            Margin="0,0,10,0"
+                            Click="Pause_Click"
+                            Style="{StaticResource SoftOrangeButton}"/>
+
+                    <!-- Reanudar -->
+                    <Button x:Name="BtnResume"
+                            Content="Reanudar"
+                            Width="100"
+                            Margin="0,0,10,0"
+                            Click="Resume_Click"
+                            Style="{StaticResource SoftOrangeButton}"/>
+
+                    <!-- Apagar -->
+                    <Button x:Name="BtnPowerOff"
+                            Content="Apagar"
+                            Width="90"
+                            Click="PowerOff_Click"
+                            Background="#FFEDEDED"
+                            Foreground="#FF4A4A4A"
+                            Style="{StaticResource NeutralButton}" Cursor="Hand"/>
+
+                </StackPanel>
+
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

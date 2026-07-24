@@ -1,0 +1,266 @@
+services:
+  db:
+    image: postgres:15
+    container_name: cajas_db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./respaldo_corregido_limpio.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gestion_audios_cajas1}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    container_name: cajas_redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: kevinagk/cajas_api:v2-optimized
+    container_name: cajas_api
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /app/storage
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+      - ./audios:/app/audios
+      - ./.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    restart: unless-stopped
+
+  worker_analysis:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: kevinagk/cajas_api:v2-optimized
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /app/storage
+      PYTHONUNBUFFERED: "1"
+    command: [ "python", "run_worker_analysis.py" ]
+    volumes:
+      - ./storage:/app/storage
+      - ./audios:/app/audios
+      - ./.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+  worker_enhance:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: kevinagk/cajas_api:v2-optimized
+    container_name: cajas_worker_enhance
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /app/storage
+      PYTHONUNBUFFERED: "1"
+    command: [ "python", "run_worker_enhance.py" ]
+    volumes:
+      - ./storage:/app/storage
+      - ./audios:/app/audios
+      - ./.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    restart: unless-stopped
+
+  folder_ingest:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    image: kevinagk/cajas_api:v2-optimized
+    container_name: cajas_folder_ingest
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /app/storage
+      WATCH_DIR: /app/watch/incoming
+      WATCH_PROCESSED_DIR: /app/watch/processed
+      WATCH_FAILED_DIR: /app/watch/failed
+      PYTHONUNBUFFERED: "1"
+    command: [ "python", "run_folder_ingest.py" ]
+    volumes:
+      - ./storage:/app/storage
+      - ./audios:/app/audios
+      - ./watch:/app/watch
+      - ./.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    restart: unless-stopped
+
+  worker_whisperx:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisperx
+    image: kevinagk/cajas_whisperx:v3-resource-limits
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ROOT: /app/storage
+      PYTHONUNBUFFERED: "1"
+      # ---- Límites de recursos GPU/CPU para PyTorch ----
+      WHISPERX_VRAM_FRACTION: "0.35"
+      WHISPERX_BATCH_SIZE: "8"
+    command: [ "python", "run_worker_whisperx.py" ]
+    volumes:
+      - ./storage:/app/storage
+      - ./audios:/app/audios
+      - ./.env:/app/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "3.0"
+          memory: 3G
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: all
+#              capabilities: [ gpu ]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: kevinagk/node-frontend:latest
+    container_name: cajas_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8001}
+      VITE_NEW_API_URL: ${VITE_NEW_API_URL:-http://localhost:8000/api/v1}
+
+  api_admin:
+    build:
+      context: ./backend_admin
+      dockerfile: Dockerfile
+    image: kevinagk/cajas_api_admin:latest
+    container_name: cajas_api_admin
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+      JWT_SECRET: ${JWT_SECRET:-tu_clave_secreta_super_segura_cambiala_en_produccion}
+
+volumes:
+  postgres_data:
+  redis_data:

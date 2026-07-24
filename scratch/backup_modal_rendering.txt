@@ -1,0 +1,60 @@
+Line 1926:                             backgroundColor: 'white'
+Line 1927:                         }}>
+Line 1928:                             {isTranscriptionLoading ? (
+Line 1929:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+Line 1930:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
+Line 1931:                                     Cargando transcripción...
+Line 1932:                                 </div>
+Line 1933:                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos.length > 0 ? (
+Line 1934:                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+Line 1935:                                     {transcriptionData[0].segmentos.map((segmento, idx) => {
+Line 1936:                                         const isCajero = segmento.hablante === 'SPEAKER_00';
+Line 1937:                                         return (
+Line 1938:                                             <div key={idx} style={{
+Line 1939:                                                 display: 'flex',
+Line 1940:                                                 alignItems: 'baseline',
+Line 1941:                                                 gap: '1rem',
+Line 1942:                                                 padding: '0.5rem 0.5rem',
+Line 1943:                                                 borderBottom: '1px solid #f8fafc',
+Line 1944:                                                 fontFamily: 'monospace, sans-serif'
+Line 1945:                                             }}>
+Line 1946:                                                 <span style={{ color: '#64748b', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+Line 1947:                                                     [ {Number(segmento.inicio_segundo).toFixed(2).padStart(5, '0')} - {Number(segmento.fin_segundo).toFixed(2).padStart(5, '0')} ]
+Line 1948:                                                 </span>
+Line 1949:                                                 <span style={{
+Line 1950:                                                     color: isCajero ? '#0ea5e9' : '#f97316',
+Line 1951:                                                     fontWeight: '700',
+Line 1952:                                                     minWidth: '75px',
+Line 1953:                                                     fontSize: '0.95rem'
+Line 1954:                                                 }}>
+Line 1955:                                                     {isCajero ? 'Cajero:' : 'Usuario:'}
+Line 1956:                                                 </span>
+Line 1957:                                                 <span style={{
+Line 1958:                                                     color: '#334155',
+Line 1959:                                                     fontSize: '0.95rem',
+Line 1960:                                                     fontFamily: 'system-ui, -apple-system, sans-serif',
+Line 1961:                                                     lineHeight: '1.5'
+Line 1962:                                                 }}>
+Line 1963:                                                     {segmento.texto}
+Line 1964:                                                 </span>
+Line 1965:                                             </div>
+Line 1966:                                         );
+Line 1967:                                     })}
+Line 1968:                                 </div>
+Line 1969:                             ) : (
+Line 1970:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+Line 1971:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</div>
+Line 1972:                                     No hay transcripción disponible para esta grabación.
+Line 1973:                                 </div>
+Line 1974:                             )}
+Line 1975:                         </div>
+Line 1976: 
+Line 1977:                         <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', background: '#f8fafc' }}>
+Line 1978:                             <button className="btn" onClick={() => setSelectedRecording(null)} style={{ padding: '0.6rem 1.25rem', cursor: 'pointer', border: '1px solid var(--border-color)', background: 'white', fontWeight: '500' }}>Cerrar</button>
+Line 1979:                             <button className="btn btn-primary" style={{ padding: '0.6rem 1.25rem', fontWeight: '500' }} disabled={isTranscriptionLoading || !transcriptionData}>
+Line 1980:                                 Descargar Texto
+Line 1981:                             </button>
+Line 1982:                         </div>
+Line 1983:                     </div>
+Line 1984:                 </div>
+Line 1985:             )}

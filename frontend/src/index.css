@@ -1,0 +1,136 @@
+:root {
+  /* Soft Orange Palette */
+  --primary-color: #fb923c;
+  /* Orange 400 - Soft and inviting */
+  --primary-hover: #f97316;
+  /* Orange 500 */
+  --primary-light: #ffedd5;
+  /* Orange 100 */
+
+  --secondary-color: #f472b6;
+  /* Pink 400 - Complementary accent */
+
+  --background-color: #fff7ed;
+  /* Orange 50 - Very light warm background */
+  --surface-color: #ffffff;
+
+  --text-primary: #431407;
+  /* Warm dark brown for better contrast on warm bg */
+  --text-secondary: #78350f;
+  /* Softer brown */
+
+  --success-color: #34d399;
+  /* Emerald 400 */
+  --danger-color: #f87171;
+  /* Red 400 */
+  --border-color: #fed7aa;
+  /* Orange 200 */
+
+  /* Spacing */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* Shadows - Softer, warmer shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(67, 20, 7, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(67, 20, 7, 0.05), 0 2px 4px -2px rgba(67, 20, 7, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(67, 20, 7, 0.08), 0 4px 6px -4px rgba(67, 20, 7, 0.04);
+
+  /* Radius */
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1.5rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  /* Outfit is a nice modern font if available, fallback to Inter */
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input,
+select,
+button {
+  font-size: 1rem;
+}
+
+/* Utility Classes */
+.card {
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  /* Subtle border */
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(251, 146, 60, 0.3);
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px -1px rgba(251, 146, 60, 0.4);
+}
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 280px;
+  background-color: var(--surface-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-lg);
+}
+
+.layout-content {
+  flex: 1;
+  padding: var(--spacing-xl);
+  overflow-y: auto;
+}

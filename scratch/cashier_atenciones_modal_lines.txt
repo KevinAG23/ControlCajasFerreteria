@@ -1,0 +1,624 @@
+--- Around line 38 ---
+28:     if (!active || !payload?.length) return null;
+29:     return (
+30:         <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '0.75rem 1rem', boxShadow: '0 10px 25px rgba(0,0,0,0.12)' }}>
+31:             <p style={{ margin: '0 0 0.25rem', fontWeight: '700', color: '#0f172a', fontSize: '0.8rem' }}>{label}</p>
+32:             <p style={{ margin: 0, color: '#ea580c', fontWeight: '800', fontSize: '1.1rem' }}>{payload[0]?.value}</p>
+33:         </div>
+34:     );
+35: };
+36: 
+37: // ─── Nested Analysis Modal ────────────────────────────────────────────────────
+38: function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
+39:     if (!analysis) return null;
+40: 
+41:     const sent = SENTIMENT[analysis.sentimiento_general] || SENTIMENT.NEUTRO;
+42:     const score = analysis.calificacion_general ?? 0;
+43:     const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+44:     const numericEvals = (analysis.evaluaciones || []).filter(ev => ev.puntaje !== null);
+45:     const boolEvals = (analysis.evaluaciones || []).filter(ev => ev.puntaje === null);
+46: 
+47:     // Calculate detailed compliance stats
+48:     const totalEvals = (analysis.evaluaciones || []).length;
+49:     const passedEvals = (analysis.evaluaciones || []).filter(ev => ev.cumple).length;
+50:     const failedEvals = (analysis.evaluaciones || []).filter(ev => !ev.cumple);
+51:     const compliancePercent = totalEvals > 0 ? Math.round((passedEvals / totalEvals) * 100) : 0;
+52: 
+
+
+--- Around line 129 ---
+119:         }
+120:         if (currentGroup) {
+121:             grouped.push(currentGroup);
+122:         }
+123:         return grouped;
+124:     };
+125: 
+126:     const containerStyle = {
+127:         background: '#fffcf7', width: '100%',
+128:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+129:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(59,29,17,0.25), 0 0 0 1px #fed7aa',
+130:         border: inline ? '1px solid #fed7aa' : 'none',
+131:         animation: 'nestedIn 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+132:         height: inline ? 'auto' : '90vh',
+133:     };
+134: 
+135:     const innerContent = (
+136:         <div style={containerStyle}>
+137:             <style>{`
+138:                 @keyframes nestedIn {
+139:                     from { opacity:0; transform:scale(0.94) translateY(16px); }
+140:                     to   { opacity:1; transform:scale(1) translateY(0); }
+141:                 }
+142:                 .eval-card { transition: border-color 0.2s, transform 0.2s; }
+143:                 .eval-card:hover { border-color: rgba(251,146,60,0.4) !important; transform: translateY(-1px); }
+
+
+--- Around line 130 ---
+120:         if (currentGroup) {
+121:             grouped.push(currentGroup);
+122:         }
+123:         return grouped;
+124:     };
+125: 
+126:     const containerStyle = {
+127:         background: '#fffcf7', width: '100%',
+128:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+129:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(59,29,17,0.25), 0 0 0 1px #fed7aa',
+130:         border: inline ? '1px solid #fed7aa' : 'none',
+131:         animation: 'nestedIn 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+132:         height: inline ? 'auto' : '90vh',
+133:     };
+134: 
+135:     const innerContent = (
+136:         <div style={containerStyle}>
+137:             <style>{`
+138:                 @keyframes nestedIn {
+139:                     from { opacity:0; transform:scale(0.94) translateY(16px); }
+140:                     to   { opacity:1; transform:scale(1) translateY(0); }
+141:                 }
+142:                 .eval-card { transition: border-color 0.2s, transform 0.2s; }
+143:                 .eval-card:hover { border-color: rgba(251,146,60,0.4) !important; transform: translateY(-1px); }
+144:             `}</style>
+
+
+--- Around line 132 ---
+122:         }
+123:         return grouped;
+124:     };
+125: 
+126:     const containerStyle = {
+127:         background: '#fffcf7', width: '100%',
+128:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+129:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(59,29,17,0.25), 0 0 0 1px #fed7aa',
+130:         border: inline ? '1px solid #fed7aa' : 'none',
+131:         animation: 'nestedIn 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+132:         height: inline ? 'auto' : '90vh',
+133:     };
+134: 
+135:     const innerContent = (
+136:         <div style={containerStyle}>
+137:             <style>{`
+138:                 @keyframes nestedIn {
+139:                     from { opacity:0; transform:scale(0.94) translateY(16px); }
+140:                     to   { opacity:1; transform:scale(1) translateY(0); }
+141:                 }
+142:                 .eval-card { transition: border-color 0.2s, transform 0.2s; }
+143:                 .eval-card:hover { border-color: rgba(251,146,60,0.4) !important; transform: translateY(-1px); }
+144:             `}</style>
+145: 
+146:             {/* Warm gradient header */}
+
+
+--- Around line 168 ---
+158:                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#7c6a5f', fontSize: '0.85rem' }}>
+159:                             <IconClock /> {atencion.date}
+160:                         </span>
+161:                         <span style={{ color: '#fed7aa', fontSize: '0.7rem' }}>|</span>
+162:                           <span style={{ color: '#ea580c', fontWeight: '700', fontSize: '0.9rem' }}>
+163:                             {atencion.time} ➔ {atencion.timeEnd}
+164:                         </span>
+165:                         <span style={{ background: 'rgba(234,88,12,0.1)', color: '#ea580c', border: '1px solid rgba(234,88,12,0.25)', borderRadius: '999px', fontSize: '0.72rem', padding: '0.15rem 0.6rem', fontWeight: '700' }}>
+166:                             Duración: {atencion.duration}
+167:                         </span>
+168:                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#15803d', fontWeight: '700', fontSize: '0.72rem', background: '#dcfce7', border: '1px solid #bbf7d0', padding: '0.15rem 0.55rem', borderRadius: '999px' }}>
+169:                             {compliancePercent}% de Cumplimiento
+170:                         </span>
+171:                     </div>
+172:                 </div>
+173:                 <button onClick={onClose} style={{
+174:                     background: '#ea580c', border: 'none',
+175:                     borderRadius: '12px', padding: '0.6rem 1.2rem', cursor: 'pointer',
+176:                     color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700',
+177:                     fontSize: '0.85rem', transition: 'all 0.15s', boxShadow: '0 4px 12px rgba(234,88,12,0.2)'
+178:                 }}
+179:                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+180:                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+181:                 >
+182:                     ← Volver a Atenciones
+
+
+--- Around line 431 ---
+421:                                     });
+422:                                 })()}
+423:                             </div>
+424:                         </div>
+425:                     </div>
+426:                 </div>
+427:             </div>
+428:         </div>
+429:     );
+430: 
+431:     if (inline) return innerContent;
+432: 
+433:     return (
+434:         <div style={{
+435:             position: 'fixed', inset: 0,
+436:             background: 'rgba(59,29,17,0.4)', backdropFilter: 'blur(8px)',
+437:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+438:             zIndex: 11000, padding: '1.5rem',
+439:         }}>
+440:             {innerContent}
+441:         </div>
+442:     );
+443: }
+444: 
+445: // ─── Main Modal ───────────────────────────────────────────────────────────────
+
+
+--- Around line 446 ---
+436:             background: 'rgba(59,29,17,0.4)', backdropFilter: 'blur(8px)',
+437:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+438:             zIndex: 11000, padding: '1.5rem',
+439:         }}>
+440:             {innerContent}
+441:         </div>
+442:     );
+443: }
+444: 
+445: // ─── Main Modal ───────────────────────────────────────────────────────────────
+446: export default function CashierAtencionesModal({ cashier, onClose, inline = false }) {
+447:     const [atenciones, setAtenciones] = useState([]);
+448:     const [loading, setLoading] = useState(true);
+449:     const [dateFilter, setDateFilter] = useState('');
+450:     const [statusFilter, setStatusFilter] = useState('ALL');
+451:     const [analysisFilter, setAnalysisFilter] = useState('ALL');
+452:     const [selectedAtencion, setSelectedAtencion] = useState(null);
+453:     const [activeAnalysis, setActiveAnalysis] = useState(null);
+454:     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+455: 
+456:     const loadAtenciones = async (silent = false) => {
+457:         if (!cashier?.id) return;
+458:         if (!silent) setLoading(true);
+459:         try {
+460:             const data = await getAtencionesByCajero(cashier.id);
+
+
+--- Around line 452 ---
+442:     );
+443: }
+444: 
+445: // ─── Main Modal ───────────────────────────────────────────────────────────────
+446: export default function CashierAtencionesModal({ cashier, onClose, inline = false }) {
+447:     const [atenciones, setAtenciones] = useState([]);
+448:     const [loading, setLoading] = useState(true);
+449:     const [dateFilter, setDateFilter] = useState('');
+450:     const [statusFilter, setStatusFilter] = useState('ALL');
+451:     const [analysisFilter, setAnalysisFilter] = useState('ALL');
+452:     const [selectedAtencion, setSelectedAtencion] = useState(null);
+453:     const [activeAnalysis, setActiveAnalysis] = useState(null);
+454:     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+455: 
+456:     const loadAtenciones = async (silent = false) => {
+457:         if (!cashier?.id) return;
+458:         if (!silent) setLoading(true);
+459:         try {
+460:             const data = await getAtencionesByCajero(cashier.id);
+461:             setAtenciones(data.map(aten => {
+462:                 const dtFin = aten.fecha_hora_fin ? new Date(aten.fecha_hora_fin) : null;
+463:                 return {
+464:                     id: aten.id,
+465:                     date: getEcuadorDateString(aten.fecha_hora_inicio),
+466:                     time: getEcuadorTimeString(aten.fecha_hora_inicio),
+
+
+--- Around line 524 ---
+514:     const completadas = atenciones.filter(a => a.estado === 'COMPLETADA').length;
+515:     const conAnalisis = atenciones.filter(a => a.hasAnalysis).length;
+516: 
+517:     if (!cashier) return null;
+518: 
+519:     const cashierName = cashier.contacto
+520:         ? `${cashier.contacto.nombre} ${cashier.contacto.apellido}`
+521:         : cashier.username;
+522:     const initials = cashier.username?.slice(0, 2).toUpperCase() || 'CA';
+523: 
+524:     if (inline && selectedAtencion && activeAnalysis) {
+525:         return (
+526:             <AnalysisModal
+527:                 analysis={activeAnalysis}
+528:                 atencion={selectedAtencion}
+529:                 onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+
+
+--- Around line 526 ---
+516: 
+517:     if (!cashier) return null;
+518: 
+519:     const cashierName = cashier.contacto
+520:         ? `${cashier.contacto.nombre} ${cashier.contacto.apellido}`
+521:         : cashier.username;
+522:     const initials = cashier.username?.slice(0, 2).toUpperCase() || 'CA';
+523: 
+524:     if (inline && selectedAtencion && activeAnalysis) {
+525:         return (
+526:             <AnalysisModal
+527:                 analysis={activeAnalysis}
+528:                 atencion={selectedAtencion}
+529:                 onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+
+
+--- Around line 528 ---
+518: 
+519:     const cashierName = cashier.contacto
+520:         ? `${cashier.contacto.nombre} ${cashier.contacto.apellido}`
+521:         : cashier.username;
+522:     const initials = cashier.username?.slice(0, 2).toUpperCase() || 'CA';
+523: 
+524:     if (inline && selectedAtencion && activeAnalysis) {
+525:         return (
+526:             <AnalysisModal
+527:                 analysis={activeAnalysis}
+528:                 atencion={selectedAtencion}
+529:                 onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+541:         minHeight: inline ? '650px' : 'auto',
+542:     };
+
+
+--- Around line 530 ---
+520:         ? `${cashier.contacto.nombre} ${cashier.contacto.apellido}`
+521:         : cashier.username;
+522:     const initials = cashier.username?.slice(0, 2).toUpperCase() || 'CA';
+523: 
+524:     if (inline && selectedAtencion && activeAnalysis) {
+525:         return (
+526:             <AnalysisModal
+527:                 analysis={activeAnalysis}
+528:                 atencion={selectedAtencion}
+529:                 onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+541:         minHeight: inline ? '650px' : 'auto',
+542:     };
+543: 
+544:     const mainContent = (
+
+
+--- Around line 538 ---
+528:                 atencion={selectedAtencion}
+529:                 onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+541:         minHeight: inline ? '650px' : 'auto',
+542:     };
+543: 
+544:     const mainContent = (
+545:         <div style={mainContainerStyle}>
+546:             <style>{`
+547:                 @keyframes modalIn {
+548:                     from { opacity:0; transform:translateY(20px) scale(0.97); }
+549:                     to   { opacity:1; transform:translateY(0) scale(1); }
+550:                 }
+551:                 @keyframes cardReveal {
+552:                     from { opacity:0; transform:translateY(12px); }
+
+
+--- Around line 539 ---
+529:                 onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+541:         minHeight: inline ? '650px' : 'auto',
+542:     };
+543: 
+544:     const mainContent = (
+545:         <div style={mainContainerStyle}>
+546:             <style>{`
+547:                 @keyframes modalIn {
+548:                     from { opacity:0; transform:translateY(20px) scale(0.97); }
+549:                     to   { opacity:1; transform:translateY(0) scale(1); }
+550:                 }
+551:                 @keyframes cardReveal {
+552:                     from { opacity:0; transform:translateY(12px); }
+553:                     to   { opacity:1; transform:translateY(0); }
+
+
+--- Around line 540 ---
+530:                 inline={true}
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+541:         minHeight: inline ? '650px' : 'auto',
+542:     };
+543: 
+544:     const mainContent = (
+545:         <div style={mainContainerStyle}>
+546:             <style>{`
+547:                 @keyframes modalIn {
+548:                     from { opacity:0; transform:translateY(20px) scale(0.97); }
+549:                     to   { opacity:1; transform:translateY(0) scale(1); }
+550:                 }
+551:                 @keyframes cardReveal {
+552:                     from { opacity:0; transform:translateY(12px); }
+553:                     to   { opacity:1; transform:translateY(0); }
+554:                 }
+
+
+--- Around line 541 ---
+531:             />
+532:         );
+533:     }
+534: 
+535:     const mainContainerStyle = {
+536:         background: '#f8fafc', width: '100%',
+537:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+538:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+539:         border: inline ? '1px solid #fed7aa' : 'none',
+540:         height: inline ? 'auto' : '90vh',
+541:         minHeight: inline ? '650px' : 'auto',
+542:     };
+543: 
+544:     const mainContent = (
+545:         <div style={mainContainerStyle}>
+546:             <style>{`
+547:                 @keyframes modalIn {
+548:                     from { opacity:0; transform:translateY(20px) scale(0.97); }
+549:                     to   { opacity:1; transform:translateY(0) scale(1); }
+550:                 }
+551:                 @keyframes cardReveal {
+552:                     from { opacity:0; transform:translateY(12px); }
+553:                     to   { opacity:1; transform:translateY(0); }
+554:                 }
+555:                 .aten-card:hover { transform:translateY(-3px) !important; box-shadow:0 16px 32px -6px rgba(234,88,12,0.15) !important; border-color:#fed7aa !important; }
+
+
+--- Around line 609 ---
+599:                                 background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)',
+600:                                 borderRadius: '14px', padding: '0.65rem 1rem', textAlign: 'center',
+601:                                 backdropFilter: 'blur(8px)',
+602:                             }}>
+603:                                 <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'white', lineHeight: 1 }}>{s.value}</div>
+604:                                 <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.2rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+605:                             </div>
+606:                         ))}
+607:                         <button onClick={onClose} style={{
+608:                             background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)',
+609:                             borderRadius: '12px', padding: inline ? '0.6rem 1.2rem' : '0.6rem', cursor: 'pointer',
+610:                             color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700',
+611:                             fontSize: '0.85rem', transition: 'all 0.15s',
+612:                         }}
+613:                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+614:                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; }}
+615:                         >
+616:                             {inline ? '← Volver a Cajeros' : <IconX />}
+617:                         </button>
+618:                     </div>
+619:                 </div>
+620:             </div>
+621: 
+622:             {/* ── FILTER BAR ── */}
+623:             <div style={{
+
+
+--- Around line 616 ---
+606:                         ))}
+607:                         <button onClick={onClose} style={{
+608:                             background: 'rgba(255,255,255,0.18)', border: '1px solid rgba(255,255,255,0.3)',
+609:                             borderRadius: '12px', padding: inline ? '0.6rem 1.2rem' : '0.6rem', cursor: 'pointer',
+610:                             color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700',
+611:                             fontSize: '0.85rem', transition: 'all 0.15s',
+612:                         }}
+613:                             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+614:                             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.18)'; }}
+615:                         >
+616:                             {inline ? '← Volver a Cajeros' : <IconX />}
+617:                         </button>
+618:                     </div>
+619:                 </div>
+620:             </div>
+621: 
+622:             {/* ── FILTER BAR ── */}
+623:             <div style={{
+624:                 padding: '1rem 2.25rem', background: 'white',
+625:                 borderBottom: '1px solid #f1f5f9',
+626:                 display: 'flex', gap: '1.25rem', alignItems: 'center', flexWrap: 'wrap',
+627:             }}>
+628:                 {/* Date filter */}
+629:                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+630:                     <span style={{ display: 'flex', color: '#94a3b8' }}><IconCalendar /></span>
+
+
+--- Around line 758 ---
+748:                                                     <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+749:                                                         {aten.sentimiento && (
+750:                                                             <span style={{
+751:                                                                 padding: '0.15rem 0.45rem',
+752:                                                                 borderRadius: '8px',
+753:                                                                 fontSize: '0.65rem',
+754:                                                                 fontWeight: '800',
+755:                                                                 background: aten.sentimiento === 'POSITIVO' ? '#dcfce7' : aten.sentimiento === 'NEGATIVO' ? '#fee2e2' : '#f1f5f9',
+756:                                                                 color: aten.sentimiento === 'POSITIVO' ? '#15803d' : aten.sentimiento === 'NEGATIVO' ? '#991b1b' : '#475569',
+757:                                                                 border: `1px solid ${aten.sentimiento === 'POSITIVO' ? '#bbf7d0' : aten.sentimiento === 'NEGATIVO' ? '#fecaca' : '#cbd5e1'}`,
+758:                                                                 display: 'inline-flex',
+759:                                                                 alignItems: 'center',
+760:                                                                 gap: '0.15rem'
+761:                                                             }}>
+762:                                                                 {aten.sentimiento === 'POSITIVO' ? '😊' : aten.sentimiento === 'NEGATIVO' ? '😞' : '😐'} {aten.sentimiento}
+763:                                                             </span>
+764:                                                         )}
+765:                                                         {aten.calificacion !== undefined && aten.calificacion !== null && (
+766:                                                             <span style={{
+767:                                                                 padding: '0.15rem 0.45rem',
+768:                                                                 borderRadius: '8px',
+769:                                                                 fontSize: '0.65rem',
+770:                                                                 fontWeight: '800',
+771:                                                                 background: aten.calificacion >= 80 ? '#ecfdf5' : aten.calificacion >= 50 ? '#fffbeb' : '#fef2f2',
+772:                                                                 color: aten.calificacion >= 80 ? '#047857' : aten.calificacion >= 50 ? '#b45309' : '#b91c1c',
+
+
+--- Around line 841 ---
+831:                                     </div>
+832:                                 </div>
+833:                             );
+834:                         })}
+835:                     </div>
+836:                 )}
+837:             </div>
+838:         </div>
+839:     );
+840: 
+841:     if (inline) return mainContent;
+842: 
+843:     return (
+844:         <div style={{
+845:             position: 'fixed', inset: 0,
+846:             background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(6px)',
+847:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+848:             zIndex: 9999, padding: '1.5rem',
+849:         }}>
+850:             {mainContent}
+851: 
+852:             {/* Nested analysis modal */}
+853:             {selectedAtencion && activeAnalysis && (
+854:                 <AnalysisModal
+855:                     analysis={activeAnalysis}
+
+
+--- Around line 853 ---
+843:     return (
+844:         <div style={{
+845:             position: 'fixed', inset: 0,
+846:             background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(6px)',
+847:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+848:             zIndex: 9999, padding: '1.5rem',
+849:         }}>
+850:             {mainContent}
+851: 
+852:             {/* Nested analysis modal */}
+853:             {selectedAtencion && activeAnalysis && (
+854:                 <AnalysisModal
+855:                     analysis={activeAnalysis}
+856:                     atencion={selectedAtencion}
+857:                     onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+858:                 />
+859:             )}
+860:         </div>
+861:     );
+862: }
+
+
+--- Around line 854 ---
+844:         <div style={{
+845:             position: 'fixed', inset: 0,
+846:             background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(6px)',
+847:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+848:             zIndex: 9999, padding: '1.5rem',
+849:         }}>
+850:             {mainContent}
+851: 
+852:             {/* Nested analysis modal */}
+853:             {selectedAtencion && activeAnalysis && (
+854:                 <AnalysisModal
+855:                     analysis={activeAnalysis}
+856:                     atencion={selectedAtencion}
+857:                     onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+858:                 />
+859:             )}
+860:         </div>
+861:     );
+862: }
+
+
+--- Around line 856 ---
+846:             background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(6px)',
+847:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+848:             zIndex: 9999, padding: '1.5rem',
+849:         }}>
+850:             {mainContent}
+851: 
+852:             {/* Nested analysis modal */}
+853:             {selectedAtencion && activeAnalysis && (
+854:                 <AnalysisModal
+855:                     analysis={activeAnalysis}
+856:                     atencion={selectedAtencion}
+857:                     onClose={() => { setSelectedAtencion(null); setActiveAnalysis(null); }}
+858:                 />
+859:             )}
+860:         </div>
+861:     );
+862: }
+

@@ -1,0 +1,28 @@
+Occurrence at 1697:
+0, 18),
+Line 56:         value: ev.cumple ? 100 : 0,
+Line 57:     }));
+Line 58: 
+Line 59:     const parseTranscriptText = (text) => {
+Line 60:         if (!text) return [];
+Line 61:         const lines = text.split('\n');
+Line 62:         const parsed = [];
+Line 63:         const regex = /^\[([\d\.]+)s\s*-\s*([\d\.]+)s\]\s*([^:]+):\s*(.*)$/;
+Line 64: 
+Line 65:         for (let line of lines) {
+Line 66:             const match = line.match(regex);
+Line 67:             if (match) {
+Line 68:                 const inicio = parseFloat(match[1]);
+Line 69:                 const fin = parseFloat(match[2]);
+Line 70:                 const speakerRaw = match[3].trim();
+Line 71:                 const te
+Occurrence at 21757:
+                             {(() => {
+Line 343:                                     const parsed = parseTranscriptText(atencion.texto);
+Line 344:                                     if (parsed.length === 0) {
+Line 345:                                         return (
+Line 346:                                             <div style={{
+Line 347:                                                 background: 'white', border: '1px solid #fed7aa',
+Line 348:                                                 borderRadius: '16px', padding: '1.25rem',
+Line 349:                                                 fontSize: '0.875rem', color: '#4f3e35',
+Line 350:                                                

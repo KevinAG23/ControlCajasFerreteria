@@ -1,0 +1,44 @@
+Line 859: case "analisis":
+  [856]:                     </>
+  [857]:                 );
+  [858]: 
+  [859]:             case "analisis":
+  [860]:                 return (
+  [861]:                     <>
+  [862]:                         {/* Toggle de Análisis */}
+  [863]:                         <div style={{ marginBottom: '2rem' }}>
+  [864]:                             <div className="toggle-container" style={{
+  [865]:                                 display: 'flex',
+  [866]:                                 background: '#f3f4f6',
+  [867]:                                 borderRadius: '12px',
+  [868]:                                 padding: '0.5rem',
+  [869]:                                 maxWidth: '400px',
+  [870]:                                 margin: '0 auto',
+  [871]:                                 position: 'relative',
+  [872]:                                 boxShadow: 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.06)'
+  [873]:                             }}>
+  [874]:                                 <button
+  [875]:                                     onClick={() => setAnalisisViewMode('cajas')}
+  [876]:                                     style={{
+  [877]:                                         flex: 1,
+  [878]:                                         padding: '0.75rem 1.5rem',
+  [879]:                                         borderRadius: '8px',
+  [880]:                                         border: 'none',
+  [881]:                                         background: analisisViewMode === 'cajas' ? 'white' : 'transparent',
+  [882]:                                         color: analisisViewMode === 'cajas' ? '#3b82f6' : '#6b7280',
+  [883]:                                         fontWeight: analisisViewMode === 'cajas' ? '600' : '500',
+  [884]:                                         cursor: 'pointer',
+  [885]:                                         boxShadow: analisisViewMode === 'cajas' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
+  [886]:                                         transition: 'all 0.3s ease',
+  [887]:                                         fontSize: '1rem',
+  [888]:                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+  [889]:                                     }}
+  [890]:                                 >
+  [891]:                                     📦 Cajas
+  [892]:                                 </button>
+  [893]:                                 <button
+  [894]:                                     onClick={() => setAnalisisViewMode('cajeros')}
+  [895]:                                     style={{
+  [896]:                                         flex: 1,
+  [897]:                                         padding: '0.75rem 1.5rem',
+  [898]:                                         borderRadius: '8px',

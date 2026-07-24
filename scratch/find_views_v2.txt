@@ -1,0 +1,770 @@
+Line 31:             <p style={{ margin: '0 0 0.25rem', fontWeight: '700', color: '#0f172a', fontSize: '0.8rem' }}>{label}</p>
+Line 32:             <p style={{ margin: 0, color: '#ea580c', fontWeight: '800', fontSize: '1.1rem' }}>{payload[0]?.value}</p>
+Line 33:         </div>
+Line 34:     );
+Line 35: };
+Line 36: 
+Line 37: // ─── Nested Analysis Modal ────────────────────────────────────────────────────
+Line 38: function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
+Line 39:     if (!analysis) return null;
+Line 40: 
+Line 41:     const sent = SENTIMENT[analysis.sentimiento_general] || SENTIMENT.NEUTRO;
+Line 42:     const score = analysis.calificacion_general ?? 0;
+Line 43:     const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
+Line 44:     const numericEvals = (analysis.evaluaciones || []).filter(ev => ev.puntaje !== null);
+Line 45:     const boolEvals = (analysis.evaluaciones || []).filter(ev => ev.puntaje === null);
+Line 46: 
+Line 47:     // Calculate detailed compliance stats
+Line 48:     const totalEvals = (analysis.evaluaciones || []).length;
+Line 49:     const passedEvals = (analysis.evaluaciones || []).filter(ev => ev.cumple).length;
+Line 50:     const failedEvals = (analysis.evaluaciones || []).filter(ev => !ev.cumple);
+Line 51:     const compliancePercent = totalEvals > 0 ? Math.round((passedEvals / totalEvals) * 100) : 0;
+Line 52: 
+Line 53:     // Radar data from all boolean evaluations
+Line 54:     const radarData = boolEvals.slice(0, 6).map(ev => ({
+Line 55:         subject: (ev.pregunta_texto || '').substring(0, 18),
+Line 56:         value: ev.cumple ? 100 : 0,
+Line 57:     }));
+Line 58: 
+Line 59:     const parseTranscriptText = (text) => {
+Line 60:         if (!text) return [];
+Line 61:         const lines = text.split('\n');
+Line 62:         const parsed = [];
+Line 63:         const regex = /^\[([\d\.]+)s\s*-\s*([\d\.]+)s\]\s*([^:]+):\s*(.*)$/;
+Line 64: 
+Line 65:         for (let line of lines) {
+Line 66:             const match = line.match(regex);
+Line 67:             if (match) {
+Line 68:                 const inicio = parseFloat(match[1]);
+Line 69:                 const fin = parseFloat(match[2]);
+Line 70:                 const speakerRaw = match[3].trim();
+Line 71:                 const textContent = match[4].trim();
+Line 72: 
+Line 73:                 const isCajero = speakerRaw === 'SPEAKER_00' || speakerRaw.toLowerCase().includes('cajero');
+Line 74: 
+Line 75:                 parsed.push({
+Line 76:                     inicio,
+Line 77:                     fin,
+Line 78:                     speaker: isCajero ? 'Cajero' : 'Usuario',
+Line 79:                     text: textContent
+Line 80:                 });
+Line 81:             } else {
+Line 82:                 if (line.trim()) {
+Line 83:                     parsed.push({
+Line 84:                         inicio: null,
+Line 85:                         fin: null,
+Line 86:                         speaker: 'Desconocido',
+Line 87:                         text: line.trim()
+Line 88:                     });
+Line 89:                 }
+Line 90:             }
+Line 91:         }
+Line 92:         return parsed;
+Line 93:     };
+Line 94: 
+Line 95:     const groupSegmentsBySpeaker = (segments) => {
+Line 96:         const grouped = [];
+Line 97:         let currentGroup = null;
+Line 98: 
+Line 99:         for (let seg of segments) {
+Line 100:             if (currentGroup && currentGroup.speaker === seg.speaker) {
+Line 101:                 currentGroup.texts.push({
+Line 102:                     inicio: seg.inicio,
+Line 103:                     fin: seg.fin,
+Line 104:                     text: seg.text
+Line 105:                 });
+Line 106:             } else {
+Line 107:                 if (currentGroup) {
+Line 108:                     grouped.push(currentGroup);
+Line 109:                 }
+Line 110:                 currentGroup = {
+Line 111:                     speaker: seg.speaker,
+Line 112:                     texts: [{
+Line 113:                         inicio: seg.inicio,
+Line 114:                         fin: seg.fin,
+Line 115:                         text: seg.text
+Line 116:                     }]
+Line 117:                 };
+Line 118:             }
+Line 119:         }
+Line 120:         if (currentGroup) {
+Line 121:             grouped.push(currentGroup);
+Line 122:         }
+Line 123:         return grouped;
+Line 124:     };
+Line 125: 
+Line 126:     const containerStyle = {
+Line 127:         background: '#fffcf7', width: '100%',
+Line 128:         borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+Line 129:         boxShadow: inline ? 'none' : '0 40px 80px -16px rgba(59,29,17,0.25), 0 0 0 1px #fed7aa',
+Line 130:         border: inline ? '1px solid #fed7aa' : 'none',
+Line 131:         animation: 'nestedIn 0.3s cubic-bezier(0.34,1.4,0.64,1)',
+Line 132:         height: inline ? 'auto' : '90vh',
+Line 133:     };
+Line 134: 
+Line 135:     const innerContent = (
+Line 136:         <div style={containerStyle}>
+Line 137:             <style>{`
+Line 138:                 @keyframes nestedIn {
+Line 139:                     from { opacity:0; transform:scale(0.94) translateY(16px); }
+Line 140:                     to   { opacity:1; transform:scale(1) translateY(0); }
+Line 141:                 }
+Line 142:                 .eval-card { transition: border-color 0.2s, transform 0.2s; }
+Line 143:                 .eval-card:hover { border-color: rgba(251,146,60,0.4) !important; transform: translateY(-1px); }
+Line 144:             `}</style>
+Line 145: 
+Line 146:             {/* Warm gradient header */}
+Line 147:             <div style={{
+Line 148:                 padding: '1.75rem 2rem',
+Line 149:                 background: 'linear-gradient(135deg, #ffedd5 0%, #fff7ed 60%)',
+Line 150:                 borderBottom: '1px solid #fed7aa',
+Line 151:                 display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0,
+Line 152:             }}>
+Line 153:                 <div>
+Line 154:                     <h2 style={{ margin: 0, color: '#431407', fontSize: '1.5rem', fontWeight: '800', letterSpacing: '-0.02em' }}>
+Line 155:                         Detalle de la Atención
+Line 156:                     </h2>
+Line 157:                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+Line 158:                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#7c6a5f', fontSize: '0.85rem' }}>
+Line 159:                             <IconClock /> {atencion.date}
+Line 160:                         </span>
+Line 161:                         <span style={{ color: '#fed7aa', fontSize: '0.7rem' }}>|</span>
+Line 162:                           <span style={{ color: '#ea580c', fontWeight: '700', fontSize: '0.9rem' }}>
+Line 163:                             {atencion.time} ➔ {atencion.timeEnd}
+Line 164:                         </span>
+Line 165:                         <span style={{ background: 'rgba(234,88,12,0.1)', color: '#ea580c', border: '1px solid rgba(234,88,12,0.25)', borderRadius: '999px', fontSize: '0.72rem', padding: '0.15rem 0.6rem', fontWeight: '700' }}>
+Line 166:                             Duración: {atencion.duration}
+Line 167:                         </span>
+Line 168:                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: '#15803d', fontWeight: '700', fontSize: '0.72rem', background: '#dcfce7', border: '1px solid #bbf7d0', padding: '0.15rem 0.55rem', borderRadius: '999px' }}>
+Line 169:                             {compliancePercent}% de Cumplimiento
+Line 170:                         </span>
+Line 171:                     </div>
+Line 172:                 </div>
+Line 173:                 <button onClick={onClose} style={{
+Line 174:                     background: '#ea580c', border: 'none',
+Line 175:                     borderRadius: '12px', padding: '0.6rem 1.2rem', cursor: 'pointer',
+Line 176:                     color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700',
+Line 177:                     fontSize: '0.85rem', transition: 'all 0.15s', boxShadow: '0 4px 12px rgba(234,88,12,0.2)'
+Line 178:                 }}
+Line 179:                     onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+Line 180:                     onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+Line 181:                 >
+Line 182:                     ← Volver a Atenciones
+Line 183:                 </button>
+Line 184:             </div>
+Line 185: 
+Line 186:             {/* Scrollable Body */}
+Line 187:             <div style={{ padding: '2.5rem', overflowY: 'auto', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+Line 188: 
+Line 189:                 {/* Score & Sentiment row */}
+Line 190:                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+Line 191: 
+Line 192:                     {/* Score Circle Card */}
+Line 193:                     <div style={{
+Line 194:                         background: 'white', border: '1px solid #fed7aa', borderRadius: '24px',
+Line 195:                         padding: '2rem', display: 'flex', alignItems: 'center', gap: '2rem',
+Line 196:                         boxShadow: '0 10px 25px -4px rgba(59,29,17,0.04)',
+Line 197:                     }}>
+Line 198:                         <div style={{ position: 'relative', width: '110px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+Line 199:                             <svg width="110" height="110" style={{ transform: 'rotate(-90deg)' }}>
+Line 200:                                 <circle cx="55" cy="55" r="48" fill="none" stroke="#ffedd5" strokeWidth="10" />
+Line 201:                                 <circle cx="55" cy="55" r="48" fill="none" stroke={scoreColor} strokeWidth="10"
+Line 202:                                         strokeDasharray={2 * Math.PI * 48}
+Line 203:                                         strokeDashoffset={2 * Math.PI * 48 * (1 - score / 100)}
+Line 204:                                         strokeLinecap="round" />
+Line 205:                             </svg>
+Line 206:                             <span style={{ position: 'absolute', fontSize: '1.6rem', fontWeight: '900', color: '#1e293b' }}>
+Line 207:                                 {Math.round(score)}
+Line 208:                             </span>
+Line 209:                         </div>
+Line 210:                         <div>
+Line 211:                             <h3 style={{ margin: '0 0 0.35rem', color: '#431407', fontSize: '1.2rem', fontWeight: '800' }}>Calificación General</h3>
+Line 212:                             <p style={{ margin: 0, color: '#7c6a5f', fontSize: '0.85rem', lineHeight: '1.4' }}>
+Line 213:                                 Puntuación consolidada obtenida de los criterios obligatorios y adicionales evaluados por IA.
+Line 214:                             </p>
+Line 215:                         </div>
+Line 216:                     </div>
+Line 217: 
+Line 218:                     {/* Sentiment Card */}
+Line 219:                     <div style={{
+Line 220:                         background: sent.bg, border: `1.5px solid ${sent.border}`, borderRadius: '24px',
+Line 221:                         padding: '2rem', display: 'flex', alignItems: 'center', gap: '2rem',
+Line 222:                         boxShadow: '0 10px 25px -4px rgba(0,0,0,0.03)',
+Line 223:                     }}>
+Line 224:                         <span style={{ fontSize: '3.5rem', lineHeight: 1 }}>{sent.emoji}</span>
+Line 225:                         <div>
+Line 226:                             <div style={{ color: sent.color, fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sentimiento Predominante</div>
+Line 227:                             <h3 style={{ margin: '0.2rem 0 0.35rem', color: sent.color, fontSize: '1.5rem', fontWeight: '900' }}>{sent.label}</h3>
+Line 228:                             <p style={{ margin: 0, color: sent.color, opacity: 0.8, fontSize: '0.85rem', lineHeight: '1.4' }}>
+Line 229:                                 Tonalidad y actitud del usuario detectada de forma semántica en la interacción.
+Line 230:                             </p>
+Line 231:                         </div>
+Line 232:                     </div>
+Line 233:                 </div>
+Line 234: 
+Line 235:                 {/* Main Content Layout */}
+Line 236:                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))', gap: '2.5rem' }}>
+Line 237: 
+Line 238:                     {/* Compliance Checklist */}
+Line 239:                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+Line 240:                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+Line 241:                             <h3 style={{ margin: 0, color: '#431407', fontSize: '1.2rem', fontWeight: '800', letterSpacing: '-0.01em' }}>
+Line 242:                                 Lista de Cumplimiento Estándar
+Line 243:                             </h3>
+Line 244:                             <span style={{ fontSize: '0.8rem', color: '#7c6a5f', fontWeight: '600' }}>
+Line 245:                                 Cumple {passedEvals} de {totalEvals}
+Line 246:                             </span>
+Line 247:                         </div>
+Line 248: 
+Line 249:                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+Line 250:                             {boolEvals.map((ev, idx) => (
+Line 251:                                 <div key={idx} className="eval-card" style={{
+Line 252:                                     background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px',
+Line 253:                                     padding: '1.1rem 1.4rem', display: 'flex', gap: '1.2rem', alignItems: 'flex-start',
+Line 254:                                     boxShadow: '0 4px 10px rgba(0,0,0,0.015)'
+Line 255:                                 }}>
+Line 256:                                     <span style={{
+Line 257:                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
+Line 258:                                         width: '24px', height: '24px', borderRadius: '50%',
+Line 259:                                         background: ev.cumple ? '#dcfce7' : '#fee2e2',
+Line 260:                                         color: ev.cumple ? '#166534' : '#991b1b',
+Line 261:                                         fontSize: '0.8rem', fontWeight: 'bold', flexShrink: 0, marginTop: '0.1rem'
+Line 262:                                     }}>
+Line 263:                                         {ev.cumple ? '✓' : '✗'}
+Line 264:                                     </span>
+Line 265:                                     <div style={{ flexGrow: 1 }}>
+Line 266:                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', marginBottom: '0.35rem' }}>
+Line 267:                                             <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '0.9rem', lineHeight: '1.4' }}>
+Line 268:                                                 {ev.pregunta_texto}
+Line 269:                                             </span>
+Line 270:                                             <span style={{
+Line 271:                                                 fontSize: '0.72rem', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '999px',
+Line 272:                                                 background: ev.cumple ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+Line 273:                                                 color: ev.cumple ? '#15803d' : '#b91c1c',
+Line 274:                                             }}>
+Line 275:                                                 {ev.cumple ? 'Cumple' : 'No Cumple'}
+Line 276:                                             </span>
+Line 277:                                         </div>
+Line 278:                                         <p style={{ margin: 0, color: '#64748b', fontSize: '0.8rem', lineHeight: '1.5' }}>
+Line 279:                                             {ev.justificacion_ia}
+Line 280:                                         </p>
+Line 281:                                     </div>
+Line 282:                                 </div>
+Line 283:                             ))}
+Line 284:                         </div>
+Line 285:                     </div>
+Line 286: 
+Line 287:                     {/* Right column: Charts & Numeric evals & Transcript */}
+Line 288:                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+Line 289: 
+Line 290:                         {/* Radar Chart for Criterias */}
+Line 291:                         {radarData.length > 0 && (
+Line 292:                             <div style={{ background: 'white', border: '1px solid #fed7aa', borderRadius: '24px', padding: '1.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 8px 20px rgba(59,29,17,0.03)' }}>
+Line 293:                                 <h4 style={{ margin: '0 0 1rem', alignSelf: 'flex-start', color: '#431407', fontSize: '1.05rem', fontWeight: '800' }}>Criterios de Evaluación</h4>
+Line 294:                                 <div style={{ width: '100%', height: 260 }}>
+Line 295:                                     <ResponsiveContainer>
+Line 296:                                         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+Line 297:                                             <PolarGrid stroke="#fed7aa" />
+Line 298:                                             <PolarAngleAxis dataKey="subject" tick={{ fill: '#7c6a5f', fontSize: 9, fontWeight: 500 }} />
+Line 299:                                             <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#7c6a5f', fontSize: 9 }} />
+Line 300:                                             <Radar name="Criterio" dataKey="value" stroke="#ea580c" fill="#f97316" fillOpacity={0.15} />
+Line 301:                                         </RadarChart>
+Line 302:                                     </ResponsiveContainer>
+Line 303:                                 </div>
+Line 304:                             </div>
+Line 305:                         )}
+Line 306: 
+Line 307:                         {/* Numeric evaluations (CSAT, ease, etc.) */}
+Line 308:                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+Line 309:                             {numericEvals.map((ev, idx) => {
+Line 310:                                 const val = ev.puntaje ?? 0;
+Line 311:                                 const maxVal = (ev.configuracion_respuesta && ev.configuracion_respuesta.max) || 10;
+Line 312:                                 return (
+Line 313:                                     <div key={idx} style={{
+Line 314:                                         background: 'white', border: '1px solid #fed7aa', borderRadius: '20px',
+Line 315:                                         padding: '1.4rem 1.75rem', boxShadow: '0 8px 20px rgba(59,29,17,0.03)'
+Line 316:                                     }}>
+Line 317:                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+Line 318:                                             <h4 style={{ margin: 0, color: '#431407', fontSize: '1rem', fontWeight: '800' }}>
+Line 319:                                                 {ev.pregunta_texto}
+Line 320:                                             </h4>
+Line 321:                                             <span style={{ fontSize: '1.4rem', fontWeight: '900', color: '#ea580c' }}>
+Line 322:                                                 {val} <span style={{ fontSize: '0.85rem', color: '#a3a3a3', fontWeight: '500' }}>/ {maxVal}</span>
+Line 323:                                             </span>
+Line 324:                                         </div>
+Line 325:                                         <div style={{ height: '8px', background: '#ffedd5', borderRadius: '999px', overflow: 'hidden', marginBottom: '0.75rem' }}>
+Line 326:                                             <div style={{ height: '100%', background: 'linear-gradient(90deg, #f97316, #ea580c)', width: `${(val / maxVal) * 100}%`, borderRadius: '999px' }} />
+Line 327:                                         </div>
+Line 328:                                         <p style={{ margin: 0, color: '#7c6a5f', fontSize: '0.8rem', lineHeight: '1.5' }}>
+Line 329:                                             {ev.justificacion_ia}
+Line 330:                                         </p>
+Line 331:                                     </div>
+Line 332:                                 );
+Line 333:                             })}
+Line 334:                         </div>
+Line 335: 
+Line 336:                         {/* Transcript */}
+Line 337:                         <div>
+Line 338:                             <p style={{ margin: '0 0 1rem', fontWeight: '700', fontSize: '0.95rem', color: '#431407' }}>
+Line 339:                                 Transcripción Original
+Line 340:                             </p>
+Line 341:                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+Line 342:                                 {(() => {
+Line 343:                                     const parsed = parseTranscriptText(atencion.texto);
+Line 344:                                     if (parsed.length === 0) {
+Line 345:                                         return (
+Line 346:                                             <div style={{
+Line 347:                                                 background: 'white', border: '1px solid #fed7aa',
+Line 348:                                                 borderRadius: '16px', padding: '1.25rem',
+Line 349:                                                 fontSize: '0.875rem', color: '#4f3e35',
+Line 350:                                                 lineHeight: '1.7', fontStyle: 'italic',
+Line 351:                                                 boxShadow: '0 4px 12px rgba(59,29,17,0.02)'
+Line 352:                                             }}>
+Line 353:                                                 No hay texto disponible.
+Line 354:                                             </div>
+Line 355:                                         );
+Line 356:                                     }
+Line 357:                                     const grouped = groupSegmentsBySpeaker(parsed);
+Line 358:                                     return grouped.map((group, gIdx) => {
+Line 359:                                         const isCajero = group.speaker === 'Cajero';
+Line 360:                                         return (
+Line 361:                                             <div key={gIdx} style={{
+Line 362:                                                 display: 'flex',
+Line 363:                                                 flexDirection: 'column',
+Line 364:                                                 background: isCajero ? '#f0f9ff' : '#fff7ed',
+Line 365:                                                 borderLeft: `4px solid ${isCajero ? '#0ea5e9' : '#f97316'}`,
+Line 366:                                                 borderRadius: '16px',
+Line 367:                                                 padding: '1.25rem 1.5rem',
+Line 368:                                                 gap: '0.6rem',
+Line 369:                                                 boxShadow: '0 4px 12px rgba(59,29,17,0.02)',
+Line 370:                                                 border: `1px solid ${isCajero ? '#e0f2fe' : '#ffedd5'}`,
+Line 371:                                                 borderLeftWidth: '4px',
+Line 372:                                             }}>
+Line 373:                                                 <div style={{
+Line 374:                                                     display: 'flex',
+Line 375:                                                     alignItems: 'center',
+Line 376:                                                     justifyContent: 'space-between',
+Line 377:                                                     borderBottom: `1px solid ${isCajero ? '#e0f2fe' : '#ffedd5'}`,
+Line 378:                                                     paddingBottom: '0.4rem',
+Line 379:                                                     marginBottom: '0.25rem'
+Line 380:                                                 }}>
+Line 381:                                                     <span style={{
+Line 382:                                                         color: isCajero ? '#0369a1' : '#c2410c',
+Line 383:                                                         fontWeight: '800',
+Line 384:                                                         fontSize: '0.85rem',
+Line 385:                                                         textTransform: 'uppercase',
+Line 386:                                                         letterSpacing: '0.05em',
+Line 387:                                                         display: 'flex',
+Line 388:                                                         alignItems: 'center',
+Line 389:                                                         gap: '0.4rem'
+Line 390:                                                     }}>
+Line 391:                                                         {isCajero ? '👤 Cajero (Agente)' : '👥 Usuario (Cliente)'}
+Line 392:                                                     </span>
+Line 393:                                                 </div>
+Line 394:                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+Line 395:                                                     {group.texts.map((t, tIdx) => (
+Line 396:                                                         <div key={tIdx} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+Line 397:                                                             {t.inicio !== null && (
+Line 398:                                                                 <span style={{
+Line 399:                                                                     color: '#94a3b8',
+Line 400:                                                                     fontSize: '0.75rem',
+Line 401:                                                                     fontFamily: 'monospace',
+Line 402:                                                                     whiteSpace: 'nowrap',
+Line 403:                                                                     minWidth: '100px'
+Line 404:                                                                 }}>
+Line 405:                                                                     [{t.inicio.toFixed(2)}s - {t.fin.toFixed(2)}s]
+Line 406:                                                                 </span>
+Line 407:                                                             )}
+Line 408:                                                             <span style={{
+Line 409:                                                                 color: '#334155',
+Line 410:                                                                 fontSize: '0.92rem',
+Line 411:                                                                 lineHeight: '1.6',
+Line 412:                                                                 fontFamily: 'system-ui, -apple-system, sans-serif'
+Line 413:                                                             }}>
+Line 414:                                                                 {t.text}
+Line 415:                                                             </span>
+Line 416:                                                         </div>
+Line 417:                                                     ))}
+Line 418:                                                 </div>
+Line 419:                                             </div>
+Line 420:                                         );
+Line 421:                                     });
+Line 422:                                 })()}
+Line 423:                             </div>
+Line 424:                         </div>
+Line 425:                     </div>
+Line 426:                 </div>
+Line 427:             </div>
+Line 428:         </div>
+Line 429:     );
+Line 430: 
+Line 431:     if (inline) return innerContent;
+Line 432: 
+Line 433:     return (
+Line 434:         <div style={{
+Line 435:             position: 'fixed', inset: 0,
+Line 436:             background: 'rgba(59,29,17,0.4)', backdropFilter: 'blur(8px)',
+Line 437:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+Line 438:             zIndex: 11000, padding: '1.5rem',
+Line 439:         }}>
+Line 440:                                 <span style={{ fontSize: '0.65rem', color: '#7c6a5f', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.3rem' }}>Calificación</span>
+Line 441:                                 <span style={{ fontSize: '2.8rem', fontWeight: '900', color: scoreColor, lineHeight: 1 }}>{score}</span>
+Line 442:                                 <span style={{ fontSize: '0.72rem', color: '#9e8c81', marginTop: '0.2rem' }}>de 100</span>
+Line 443:                                 {/* Progress arc  */}
+Line 444:                                 <div style={{ width: '100%', height: '4px', background: '#f3e8dc', borderRadius: '99px', marginTop: '0.75rem', overflow: 'hidden' }}>
+Line 445:                                     <div style={{ height: '100%', width: `${score}%`, background: scoreColor, borderRadius: '99px', transition: 'width 1s ease' }} />
+Line 446:                                 </div>
+Line 447:                             </div>
+Line 448: 
+Line 449:                             <div style={{
+Line 450:                                 borderRadius: '18px', padding: '1.25rem',
+Line 451:                                 background: sent.bg,
+Line 452:                                 border: `1px solid ${sent.border}`,
+Line 453:                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+Line 454:                                 boxShadow: '0 4px 12px rgba(59,29,17,0.03)',
+Line 455:                             }}>
+Line 456:                                 <span style={{ fontSize: '2.5rem', marginBottom: '0.4rem' }}>{sent.emoji}</span>
+Line 457:                                 <span style={{ fontSize: '0.65rem', color: '#7c6a5f', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>Sentimiento</span>
+Line 458:                                 <span style={{ fontSize: '1rem', fontWeight: '800', color: sent.color }}>{sent.label}</span>
+Line 459:                             </div>
+Line 460:                         </div>
+Line 461: 
+Line 462:                         {/* Bar chart – numeric metrics */}
+Line 463:                         {numericEvals.length > 0 && (
+Line 464:                             <div style={{ background: 'white', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(59,29,17,0.03)' }}>
+Line 465:                                 <p style={{ margin: '0 0 0.25rem', fontWeight: '700', fontSize: '0.88rem', color: '#431407' }}>Métricas Numéricas</p>
+Line 466:                                 <p style={{ margin: '0 0 1rem', fontSize: '0.72rem', color: '#7c6a5f' }}>Puntajes obtenidos por escala</p>
+Line 467:                                 <div style={{ height: 200 }}>
+Line 468:                                     <ResponsiveContainer>
+Line 469:                                         <BarChart data={numericEvals} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+Line 470:                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3e8dc" />
+Line 471:                                             <XAxis dataKey="pregunta_texto" tick={{ fontSize: 10, fill: '#7c6a5f' }} tickFormatter={v => v.substring(0, 10) + '…'} axisLine={false} tickLine={false} />
+Line 472:                                             <YAxis tick={{ fontSize: 10, fill: '#7c6a5f' }} axisLine={false} tickLine={false} />
+Line 473:                                             <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(234,88,12,0.03)' }} />
+Line 474:                                             <Bar dataKey="puntaje" radius={[6, 6, 0, 0]} maxBarSize={44}>
+Line 475:                                                 {numericEvals.map((entry, i) => (
+Line 476:                                                     <Cell key={i} fill={entry.puntaje >= 8 ? '#10b981' : entry.puntaje >= 5 ? '#f59e0b' : '#ef4444'} />
+Line 477:                                                 ))}
+Line 478:                                             </Bar>
+Line 479:                                         </BarChart>
+Line 480:                                     </ResponsiveContainer>
+Line 481:                                 </div>
+Line 482:                             </div>
+Line 483:                         )}
+Line 484: 
+Line 485:                         {/* Radar chart – boolean metrics */}
+Line 486:                         {radarData.length > 1 && (
+Line 487:                             <div style={{ background: 'white', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(59,29,17,0.03)' }}>
+Line 488:                                 <p style={{ margin: '0 0 0.25rem', fontWeight: '700', fontSize: '0.88rem', color: '#431407' }}>Perfil de Cumplimiento</p>
+Line 489:                                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.72rem', color: '#7c6a5f' }}>Porcentaje por métrica</p>
+Line 490:                                 <div style={{ height: 200 }}>
+Line 491:                                     <ResponsiveContainer>
+Line 492:                                         <RadarChart cx="50%" cy="50%" outerRadius="72%" data={radarData}>
+Line 493:                                             <PolarGrid stroke="#f3e8dc" />
+Line 494:                                             <PolarAngleAxis dataKey="subject" tick={{ fill: '#7c6a5f', fontSize: 9 }} />
+Line 495:                                             <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+Line 496:                                             <Radar dataKey="value" stroke="#ea580c" fill="#ea580c" fillOpacity={0.2} strokeWidth={2} />
+Line 497:                                         </RadarChart>
+Line 498:                                     </ResponsiveContainer>
+Line 499:                                 </div>
+Line 500:                             </div>
+Line 501:                         )}
+Line 502: 
+Line 503:                         {/* Resumen ejecutivo */}
+Line 504:                         {analysis.resumen_ejecutivo && (
+Line 505:                             <div style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(234,88,12,0.04)' }}>
+Line 506:                                 <p style={{ margin: '0 0 0.75rem', fontWeight: '700', fontSize: '0.88rem', color: '#ea580c' }}>Resumen Ejecutivo</p>
+Line 507:                                 <p style={{ margin: 0, fontSize: '0.875rem', color: '#4f3e35', lineHeight: '1.7', whiteSpace: 'pre-wrap' }}>
+Line 508:                                     {analysis.resumen_ejecutivo}
+Line 509:                                 </p>
+Line 510:                             </div>
+Line 511:                         )}
+Line 512:                     </div>
+Line 513: 
+Line 514: 
+Line 515:                     {/* RIGHT PANEL – evaluations + transcript */}
+Line 516:                     <div style={{ flex: 1, padding: '2rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+Line 517: 
+Line 518:                         {/* Compliance metrics summary header */}
+Line 519:                         <div style={{
+Line 520:                             background: 'white',
+Line 521:                             border: '1px solid #fed7aa',
+Line 522:                             borderRadius: '20px',
+Line 523:                             padding: '1.25rem 1.5rem',
+Line 524:                             display: 'flex',
+Line 525:                             alignItems: 'center',
+Line 526:                             justifyContent: 'space-between',
+Line 527:                             gap: '1rem',
+Line 528:                             flexWrap: 'wrap',
+Line 529:                             boxShadow: '0 4px 12px rgba(59,29,17,0.03)',
+Line 530:                         }}>
+Line 531:                             <div>
+Line 532:                                 <h4 style={{ margin: 0, color: '#431407', fontSize: '1rem', fontWeight: '800' }}>Nivel de Cumplimiento</h4>
+Line 533:                                 <p style={{ margin: '0.2rem 0 0', color: '#7c6a5f', fontSize: '0.8rem' }}>
+Line 534:                                     {passedEvals} de {totalEvals} estándares cubiertos con éxito
+Line 535:                                 </p>
+Line 536:                             </div>
+Line 537:                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+Line 538:                                 <div style={{ textAlign: 'right' }}>
+Line 539:                                     <span style={{
+Line 540:                                         fontSize: '1.8rem',
+Line 541:                                         fontWeight: '900',
+Line 542:                                         color: compliancePercent >= 80 ? '#10b981' : compliancePercent >= 50 ? '#f59e0b' : '#ef4444'
+Line 543:                                     }}>
+Line 544:                                         {compliancePercent}%
+Line 545:                                     </span>
+Line 546:                                 </div>
+Line 547:                                 <div style={{
+Line 548:                                     width: '60px',
+Line 549:                                     height: '60px',
+Line 550:                                     position: 'relative',
+Line 551:                                     display: 'flex',
+Line 552:                                     alignItems: 'center',
+Line 553:                                     justifyContent: 'center',
+Line 554:                                     background: '#f3e8dc',
+Line 555:                                     borderRadius: '50%',
+Line 556:                                     border: `3px solid #e5d5c5`
+Line 557:                                 }}>
+Line 558:                                     <div style={{
+Line 559:                                         position: 'absolute',
+Line 560:                                         inset: -3,
+Line 561:                                         borderRadius: '50%',
+Line 562:                                         border: '3px solid transparent',
+Line 563:                                         borderTopColor: compliancePercent >= 80 ? '#10b981' : compliancePercent >= 50 ? '#f59e0b' : '#ef4444',
+Line 564:                                         transform: `rotate(${compliancePercent * 3.6}deg)`,
+Line 565:                                         transition: 'transform 0.5s ease'
+Line 566:                                     }} />
+Line 567:                                     <span style={{ fontSize: '1.25rem' }}>📊</span>
+Line 568:                                 </div>
+Line 569:                             </div>
+Line 570:                         </div>
+Line 571: 
+Line 572:                         {/* Oportunidades de Mejora / Optimización */}
+Line 573:                         {failedEvals.length > 0 && (
+Line 574:                             <div>
+Line 575:                                 <p style={{ margin: '0 0 1rem', fontWeight: '800', fontSize: '0.95rem', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+Line 576:                                     ⚠️ Oportunidades de Mejora / Acciones de Optimización <span style={{ color: '#9e8c81', fontWeight: '400', fontSize: '0.8rem' }}>({failedEvals.length})</span>
+Line 577:                                 </p>
+Line 578:                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+Line 579:                                     {failedEvals.map((ev, idx) => (
+Line 580:                                         <div key={idx} className="eval-card" style={{
+Line 581:                                             background: 'linear-gradient(135deg, #fff5f5 0%, white 100%)',
+Line 582:                                             borderRadius: '16px',
+Line 583:                                             border: '1px solid #fecdd3',
+Line 584:                                             borderLeft: `4px solid #ef4444`,
+Line 585:                                             padding: '1.1rem 1.25rem',
+Line 586:                                             boxShadow: '0 4px 12px rgba(239,68,68,0.03)',
+Line 587:                                         }}>
+Line 588:                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem', gap: '1rem' }}>
+Line 589:                                                 <span style={{ fontWeight: '700', color: '#431407', fontSize: '0.88rem', lineHeight: '1.35', flex: 1 }}>
+Line 590:                                                     {ev.pregunta_texto}
+Line 591:                                                 </span>
+Line 592:                                                 <span style={{
+Line 593:                                                     background: '#fee2e2',
+Line 594:                                                     color: '#ef4444',
+Line 595:                                                     border: '1px solid #fecdd3',
+Line 596:                                                     borderRadius: '8px',
+Line 597:                                                     padding: '0.2rem 0.6rem',
+Line 598:                                                     fontSize: '0.72rem',
+Line 599:                                                     fontWeight: '800',
+Line 600:                                                     flexShrink: 0,
+Line 601:                                                     textTransform: 'uppercase',
+Line 602:                                                     letterSpacing: '0.05em'
+Line 603:                                                 }}>
+Line 604:                                                     ✗ No cumple {ev.puntaje !== null ? `(${ev.puntaje} pts)` : ''}
+Line 605:                                                 </span>
+Line 606:                                             </div>
+Line 607:                                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f3e35', lineHeight: '1.5' }}>
+Line 608:                                                 <strong style={{ color: '#ef4444' }}>Evidencia / Justificación:</strong> {ev.justificacion_ia}
+Line 609:                                             </p>
+Line 610:                                         </div>
+Line 611:                                     ))}
+Line 612:                                 </div>
+Line 613:                             </div>
+Line 614:                         )}
+Line 615: 
+Line 616:                         {/* Criterios Cumplidos */}
+Line 617:                         <div>
+Line 618:                             <p style={{ margin: '0 0 1rem', fontWeight: '800', fontSize: '0.95rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+Line 619:                                 ✓ Criterios Cumplidos / Fortalezas <span style={{ color: '#9e8c81', fontWeight: '400', fontSize: '0.8rem' }}>({passedEvals})</span>
+Line 620:                             </p>
+Line 621:                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+Line 622:                                 {(analysis.evaluaciones || []).filter(ev => ev.cumple).map((ev, idx) => {
+Line 623:                                     const isNum = ev.puntaje !== null;
+Line 624:                                     return (
+Line 625:                                         <div key={idx} className="eval-card" style={{
+Line 626:                                             background: 'linear-gradient(135deg, #f0fdf4 0%, white 100%)',
+Line 627:                                             borderRadius: '16px',
+Line 628:                                             border: '1px solid #bbf7d0',
+Line 629:                                             borderLeft: `4px solid #10b981`,
+Line 630:                                             padding: '1.1rem 1.25rem',
+Line 631:                                             boxShadow: '0 4px 12px rgba(16,185,129,0.03)',
+Line 632:                                         }}>
+Line 633:                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem', gap: '1rem' }}>
+Line 634:                                                 <span style={{ fontWeight: '700', color: '#431407', fontSize: '0.88rem', lineHeight: '1.35', flex: 1 }}>
+Line 635:                                                     {ev.pregunta_texto}
+Line 636:                                                 </span>
+Line 637:                                                 <span style={{
+Line 638:                                                     background: '#dcfce7',
+Line 639:                                                     color: '#10b981',
+Line 640:                                                     border: '1px solid #bbf7d0',
+Line 641:                                                     borderRadius: '8px',
+Line 642:                                                     padding: '0.2rem 0.6rem',
+Line 643:                                                     fontSize: '0.72rem',
+Line 644:                                                     fontWeight: '800',
+Line 645:                                                     flexShrink: 0,
+Line 646:                                                     textTransform: 'uppercase',
+Line 647:                                                     letterSpacing: '0.05em'
+Line 648:                                                 }}>
+Line 649:                                                     ✓ Cumple {isNum ? `(${ev.puntaje} pts)` : ''}
+Line 650:                                                 </span>
+Line 651:                                             </div>
+Line 652:                                             <p style={{ margin: 0, fontSize: '0.82rem', color: '#4f3e35', lineHeight: '1.5' }}>
+Line 653:                                                 {ev.justificacion_ia}
+Line 654:                                             </p>
+Line 655:                                         </div>
+Line 656:                                     );
+Line 657:                                 })}
+Line 658:                             </div>
+Line 659:                         </div>
+Line 660: 
+Line 661:                         {/* Transcript */}
+Line 662:                         <div>
+Line 663:                             <p style={{ margin: '0 0 1rem', fontWeight: '700', fontSize: '0.95rem', color: '#431407' }}>
+Line 664:                                 Transcripción Original
+Line 665:                             </p>
+Line 666:                             <div style={{
+Line 667:                                 background: 'white', border: '1px solid #fed7aa',
+Line 668:                                 borderRadius: '16px', padding: '1.25rem',
+Line 669:                                 fontSize: '0.875rem', color: '#4f3e35',
+Line 670:                                 lineHeight: '1.7', fontStyle: 'italic', whiteSpace: 'pre-wrap',
+Line 671:                                 boxShadow: '0 4px 12px rgba(59,29,17,0.02)'
+Line 672:                             }}>
+Line 673:                                 {atencion.texto || 'No hay texto disponible.'}
+Line 674:                             </div>
+Line 675:                         </div>
+Line 676:                     </div>
+Line 677:                 </div>
+Line 678:             </div>
+Line 679:         </div>
+Line 680:     );
+Line 681: }
+Line 682: 
+Line 683: // ─── Main Modal ───────────────────────────────────────────────────────────────
+Line 684: export default function CashierAtencionesModal({ cashier, onClose }) {
+Line 685:     const [atenciones, setAtenciones] = useState([]);
+Line 686:     const [loading, setLoading] = useState(true);
+Line 687:     const [dateFilter, setDateFilter] = useState('');
+Line 688:     const [statusFilter, setStatusFilter] = useState('ALL');
+Line 689:     const [analysisFilter, setAnalysisFilter] = useState('ALL');
+Line 690:     const [selectedAtencion, setSelectedAtencion] = useState(null);
+Line 691:     const [activeAnalysis, setActiveAnalysis] = useState(null);
+Line 692:     const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+Line 693: 
+Line 694:     const loadAtenciones = async (silent = false) => {
+Line 695:         if (!cashier?.id) return;
+Line 696:         if (!silent) setLoading(true);
+Line 697:         try {
+Line 698:             const data = await getAtencionesByCajero(cashier.id);
+Line 699:             setAtenciones(data.map(aten => {
+Line 700:                 const dtFin = aten.fecha_hora_fin ? new Date(aten.fecha_hora_fin) : null;
+Line 701:                 return {
+Line 702:                     id: aten.id,
+Line 703:                     date: getEcuadorDateString(aten.fecha_hora_inicio),
+Line 704:                     time: getEcuadorTimeString(aten.fecha_hora_inicio),
+Line 705:                     timeEnd: dtFin ? getEcuadorTimeString(aten.fecha_hora_fin) : '—',
+Line 706:                     duration: aten.duracion_segundos
+Line 707:                         ? `${Math.floor(aten.duracion_segundos / 60)}m ${String(aten.duracion_segundos % 60).padStart(2,'0')}s`
+Line 708:                         : '—',
+Line 709:                     estado: aten.estado,
+Line 710:                     hasAnalysis: !!aten.analisis_id,
+Line 711:                     texto: aten.texto_transcripcion,
+Line 712:                     sentimiento: aten.sentimiento_general,
+Line 713:                     calificacion: aten.calificacion_general
+Line 714:                 };
+Line 715:             }));
+Line 716:         } catch (err) {
+Line 717:             console.error("Error loading atenciones:", err);
+Line 718:         } finally {
+Line 719:             if (!silent) setLoading(false);
+Line 720:         }
+Line 721:     };
+Line 722: 
+Line 723:     useEffect(() => {
+Line 724:         loadAtenciones(false);
+Line 725:         const intervalId = setInterval(() => {
+Line 726:             loadAtenciones(true);
+Line 727:         }, 5000);
+Line 728:         return () => clearInterval(intervalId);
+Line 729:     }, [cashier?.id]);
+Line 730: 
+Line 731:     const handleViewAnalysis = async (aten) => {
+Line 732:         if (!aten.hasAnalysis) return;
+Line 733:         setLoadingAnalysis(true);
+Line 734:         try {
+Line 735:             const data = await getAnalisisByAtencion(aten.id);
+Line 736:             setActiveAnalysis(data);
+Line 737:             setSelectedAtencion(aten);
+Line 738:         } catch (err) { console.error(err); }
+Line 739:         setLoadingAnalysis(false);
+Line 740:     };
+Line 741: 
+Line 742:     const filtered = atenciones.filter(a => {
+Line 743:         if (dateFilter && a.date !== dateFilter) return false;
+Line 744:         if (statusFilter !== 'ALL' && a.estado !== statusFilter) return false;
+Line 745:         if (analysisFilter === 'ANALYZED' && !a.hasAnalysis) return false;
+Line 746:         if (analysisFilter === 'PENDING' && a.hasAnalysis) return false;
+Line 747:         return true;
+Line 748:     });
+Line 749: 
+Line 750:     const completadas = atenciones.filter(a => a.estado === 'COMPLETADA').length;
+Line 751:     const conAnalisis = atenciones.filter(a => a.hasAnalysis).length;
+Line 752: 
+Line 753:     if (!cashier) return null;
+Line 754: 
+Line 755:     const cashierName = cashier.contacto
+Line 756:         ? `${cashier.contacto.nombre} ${cashier.contacto.apellido}`
+Line 757:         : cashier.username;
+Line 758:     const initials = cashier.username?.slice(0, 2).toUpperCase() || 'CA';
+Line 759: 
+Line 760:     return (
+Line 761:         <div style={{
+Line 762:             position: 'fixed', inset: 0,
+Line 763:             background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(6px)',
+Line 764:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+Line 765:             zIndex: 9999, padding: '1.5rem',
+Line 766:         }}>
+Line 767:             <div style={{
+Line 768:                 background: '#f8fafc', width: '100%', maxWidth: '1200px', height: '90vh',
+Line 769:                 borderRadius: '28px', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+Line 770:                 boxShadow: '0 40px 80px -16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.6)',
+Line 771:                 animation: 'modalIn 0.35s cubic-bezier(0.34,1.3,0.64,1)',
+Line 772:             }}>
+Line 773:                 <style>{`
+Line 774:                     @keyframes modalIn {
+Line 775:                         from { opacity:0; transform:translateY(20px) scale(0.97); }
+Line 776:                         to   { opacity:1; transform:translateY(0) scale(1); }
+Line 777:                     }
+Line 778:                     @keyframes cardReveal {
+Line 779:                         from { opacity:0; transform:translateY(12px); }
+Line 780:                         to   { opacity:1; transform:translateY(0); }
+Line 781:                     }
+Line 782:                     .aten-card:hover { transform:translateY(-3px) !important; box-shadow:0 16px 32px -6px rgba(234,88,12,0.15) !important; border-color:#fed7aa !important; }
+Line 783:                     .filter-btn { transition:all 0.18s ease; }
+Line 784:                     .filter-btn:hover:not(.active) { border-color:#94a3b8 !important; color:#475569 !important; }
+Line 785:                 `}</style>
+Line 786: 
+Line 787:                 {/* ── HERO HEADER ── */}
+Line 788:                 <div style={{
+Line 789:                     background: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 60%, #ea580c 100%)',
+Line 790:                     padding: '1.75rem 2.25rem', flexShrink: 0, position: 'relative', overflow: 'hidden',
+Line 791:                 }}>
+Line 792:                     <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '200px', height: '200px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+Line 793:                     <div style={{ position: 'absolute', right: '100px', bottom: '-60px', width: '160px', height: '160px', borderRadius: '50%', background: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+Line 794: 
+Line 795:                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 1, position: 'relative' }}>
+Line 796:                         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+Line 797:                             <div style={{
+Line 798:                                 width: '60px', height: '60px', borderRadius: '18px',
+Line 799:                                 background: 'rgba(255,255,255,0.18)',
+Line 800:                                 border: '2px solid rgba(255,255,255,0.3)',

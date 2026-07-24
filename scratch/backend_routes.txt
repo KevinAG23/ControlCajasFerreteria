@@ -1,0 +1,19 @@
+--- Around line 541 ---
+531: 
+532:     await crud.create_log(db, schemas.LogAuditoriaCreate(
+533:         usuario_actor_id=current_user.id,
+534:         tabla_afectada="respuestas_evaluacion",
+535:         id_registro_afectado=respuesta_id,
+536:         tipo_accion="UPDATE",
+537:         cambios_json=safe_data
+538:     ))
+539:     return db_respuesta
+540: 
+541: @app.get("/transcripciones/{grabacion_id}", response_model=List[schemas.Transcripcion])
+542: async def api_get_transcripciones(grabacion_id: UUID, db: AsyncSession = Depends(database.get_db)):
+543:     return await crud.get_transcripciones(db, grabacion_id)
+544: 
+545: @app.get("/logs", response_model=schemas.PaginatedLogs)
+546: async def api_get_logs(skip: int = 0, limit: int = 100, date_filter: Optional[str] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+547:     return await crud.get_logs_auditoria(db, skip=skip, limit=limit, date_filter=date_filter)
+

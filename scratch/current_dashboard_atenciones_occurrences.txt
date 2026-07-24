@@ -1,0 +1,17 @@
+--- Occurrence at character 1045 ---
+ricsManager';
+import CashierClientsModal from '../components/dashboard/CashierClientsModal';
+import CashierAtencionesModal from '../components/dashboard/CashierAtencionesModal';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import {
+--- Occurrence at character 1098 ---
+ponents/dashboard/CashierClientsModal';
+import CashierAtencionesModal from '../components/dashboard/CashierAtencionesModal';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { useCustomDialog } from "../components/common/CustomD
+--- Occurrence at character 69744 ---
+                         {selectedCashierForAtenciones ? (
+                                        <CashierAtencionesModal
+                                            cashier={selectedCashierForAtenciones}
+                                            onClose={() => setSelectedCashierForAtenciones(null)}
+                                            in

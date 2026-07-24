@@ -1,0 +1,256 @@
+--- Around line 7 ---
+1: import React, { useEffect, useState, useRef } from "react";
+2: import { useNavigate } from "react-router-dom";
+3: import { getLogs, getEstadoCajas } from "../api/admin";
+4: import { getContacts, createContact, updateContact, deleteContact } from "../api/contacts";
+5: import { getUsers, createUser, updateUser, deleteUser, getRoles } from "../api/users";
+6: import { getCajas as getCajasDB, getTodasCajas, createCaja, updateCaja, deleteCaja } from "../api/cajas";
+7: import { getGrabaciones, getTranscripciones, getAnalisis, updateRespuesta } from "../api/grabaciones";
+8: import "../styles/dashboard.css";
+9: import { SentimentPieChart, ActivityBarChart } from "../components/dashboard/DashboardCharts";
+10: import CashierList from "../components/dashboard/CashierList";
+11: import CashierDetailModal from "../components/dashboard/CashierDetailModal";
+12: import BoxDetailModal from "../components/dashboard/BoxDetailModal";
+13: import MetricsManager from '../components/dashboard/MetricsManager';
+14: import CashierClientsModal from '../components/dashboard/CashierClientsModal';
+15: import CashierAtencionesModal from '../components/dashboard/CashierAtencionesModal';
+16: import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+17: import { useCustomDialog } from "../components/common/CustomDialog";
+18: import { getEcuadorDateString, getEcuadorTimeString, getEcuadorDateTimeString } from "../utils/date";
+19: 
+20: 
+21: export default function AdminDashboard({ user }) {
+22:     const { alert, confirm } = useCustomDialog();
+23:     const navigate = useNavigate();
+24:     const [currentView, setCurrentView] = useState("panel");
+25:     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+26:     // Settings State removed
+
+
+--- Around line 220 ---
+205:     const [selectedRecording, setSelectedRecording] = useState(null);
+206:     const [selectedAnalysis, setSelectedAnalysis] = useState(null);
+207:     const [transcriptionData, setTranscriptionData] = useState(null);
+208:     const [isTranscriptionLoading, setIsTranscriptionLoading] = useState(false);
+209:     const [transcriptionError, setTranscriptionError] = useState(null);
+210:     const [analysisData, setAnalysisData] = useState(null);
+211:     const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+212: 
+213:     // Individual Response Editing State
+214:     const [editingResponseId, setEditingResponseId] = useState(null);
+215:     const [tempResponseScore, setTempResponseScore] = useState("");
+216: 
+217:     // Fetch Transcriptions Effect
+218:     useEffect(() => {
+219:         if (selectedRecording) {
+220:             const fetchTranscripciones = async () => {
+221:                 setIsTranscriptionLoading(true);
+222:                 setTranscriptionError(null);
+223:                 try {
+224:                     const data = await getTranscripciones(selectedRecording.rawId);
+225:                     setTranscriptionData(data);
+226:                 } catch (error) {
+227:                     console.error("Error fetching transcription:", error);
+228:                     setTranscriptionError(error.response?.data?.detail || error.message || "Error al cargar la transcripción");
+229:                     setTranscriptionData(null);
+230:                 } finally {
+231:                     setIsTranscriptionLoading(false);
+232:                 }
+233:             };
+234:             fetchTranscripciones();
+235:         } else {
+236:             setTranscriptionData(null);
+237:             setTranscriptionError(null);
+238:         }
+239:     }, [selectedRecording]);
+
+
+--- Around line 224 ---
+209:     const [transcriptionError, setTranscriptionError] = useState(null);
+210:     const [analysisData, setAnalysisData] = useState(null);
+211:     const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+212: 
+213:     // Individual Response Editing State
+214:     const [editingResponseId, setEditingResponseId] = useState(null);
+215:     const [tempResponseScore, setTempResponseScore] = useState("");
+216: 
+217:     // Fetch Transcriptions Effect
+218:     useEffect(() => {
+219:         if (selectedRecording) {
+220:             const fetchTranscripciones = async () => {
+221:                 setIsTranscriptionLoading(true);
+222:                 setTranscriptionError(null);
+223:                 try {
+224:                     const data = await getTranscripciones(selectedRecording.rawId);
+225:                     setTranscriptionData(data);
+226:                 } catch (error) {
+227:                     console.error("Error fetching transcription:", error);
+228:                     setTranscriptionError(error.response?.data?.detail || error.message || "Error al cargar la transcripción");
+229:                     setTranscriptionData(null);
+230:                 } finally {
+231:                     setIsTranscriptionLoading(false);
+232:                 }
+233:             };
+234:             fetchTranscripciones();
+235:         } else {
+236:             setTranscriptionData(null);
+237:             setTranscriptionError(null);
+238:         }
+239:     }, [selectedRecording]);
+240: 
+241:     // Fetch Analysis Effect
+242:     useEffect(() => {
+243:         if (selectedAnalysis) {
+
+
+--- Around line 234 ---
+219:         if (selectedRecording) {
+220:             const fetchTranscripciones = async () => {
+221:                 setIsTranscriptionLoading(true);
+222:                 setTranscriptionError(null);
+223:                 try {
+224:                     const data = await getTranscripciones(selectedRecording.rawId);
+225:                     setTranscriptionData(data);
+226:                 } catch (error) {
+227:                     console.error("Error fetching transcription:", error);
+228:                     setTranscriptionError(error.response?.data?.detail || error.message || "Error al cargar la transcripción");
+229:                     setTranscriptionData(null);
+230:                 } finally {
+231:                     setIsTranscriptionLoading(false);
+232:                 }
+233:             };
+234:             fetchTranscripciones();
+235:         } else {
+236:             setTranscriptionData(null);
+237:             setTranscriptionError(null);
+238:         }
+239:     }, [selectedRecording]);
+240: 
+241:     // Fetch Analysis Effect
+242:     useEffect(() => {
+243:         if (selectedAnalysis) {
+244:             const fetchAnalisisData = async () => {
+245:                 setIsAnalysisLoading(true);
+246:                 try {
+247:                     const data = await getAnalisis(selectedAnalysis.rawId);
+248:                     setAnalysisData(data);
+249:                 } catch (error) {
+250:                     console.error("Error fetching analysis:", error);
+251:                     setAnalysisData(null);
+252:                 } finally {
+253:                     setIsAnalysisLoading(false);
+
+
+--- Around line 373 ---
+358:                 durText += `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+359: 
+360:                 return {
+361:                     id: g.id.substring(0, 8),
+362:                     rawId: g.id,
+363:                     usuario_id: g.usuario_id,
+364:                     contacto_id: g.contacto_id,
+365:                     caja_id: g.caja_id,
+366:                     cajero: g.contacto ? `${g.contacto.nombre} ${g.contacto.apellido}` : (g.usuario ? (g.usuario.contacto ? `${g.usuario.contacto.nombre} ${g.usuario.contacto.apellido}` : g.usuario.username) : "Desconocido"),
+367:                     caja: g.caja ? g.caja.nombre_identificador : "Desconocida",
+368:                     fecha: getEcuadorDateString(g.fecha_hora_inicio),
+369:                     hora: getEcuadorTimeString(g.fecha_hora_inicio),
+370:                     fecha_hora_inicio: g.fecha_hora_inicio,
+371:                     duracion: durText,
+372:                     duracion_segundos: g.duracion_segundos != null ? g.duracion_segundos : 0,
+373:                     transcripcion: g.transcripcion || null,
+374:                     analisis: g.analisis || null
+375:                 };
+376:             });
+377:             setAllRecordings(formattedRecordings);
+378: 
+379:             // Process Contacts to check for existing users
+380:             const processedContacts = contactsData.map(contact => {
+381:                 const hasUser = usersData.some(u => u.contacto_id === contact.id);
+382:                 return { ...contact, hasUserAccount: hasUser };
+383:             });
+384:             setContacts(processedContacts);
+385: 
+386:             // Format Cajas
+387:             const formattedBoxes = cajasData.map(b => ({
+388:                 id: b.id,
+389:                 name: b.nombre_identificador,
+390:                 description: b.ubicacion,
+391:                 assignedContactId: b.contacto_id,
+392:                 recordingMode: "schedule",
+
+
+--- Around line 2105 ---
+2090:             {selectedRecording && (
+2091:                 <div className="modal-overlay" style={{
+2092:                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+2093:                     backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+2094:                     zIndex: 1000, backdropFilter: 'blur(4px)'
+2095:                 }}>
+2096:                     <div className="modal-content" style={{
+2097:                         backgroundColor: 'white', padding: '0', borderRadius: 'var(--radius-xl)',
+2098:                         width: '90%', maxWidth: '850px', maxHeight: '85vh', overflow: 'hidden',
+2099:                         boxShadow: 'var(--shadow-2xl)', display: 'flex', flexDirection: 'column',
+2100:                         animation: 'fadeIn 0.3s ease-out'
+2101:                     }}>
+2102:                         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#f8fafc' }}>
+2103:                             <div>
+2104:                                 <h2 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', margin: '0 0 0.5rem 0', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+2105:                                     <span style={{ fontSize: '1.5rem' }}>📝</span> Transcripción de Llamada
+2106:                                 </h2>
+2107:                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+2108:                                     <span className="badge badge-blue">Cajero: {selectedRecording.cajero}</span>
+2109:                                     <span className="badge badge-orange">Duración: {selectedRecording.duracion}</span>
+2110:                                     <span className="badge badge-green">Caja: {selectedRecording.caja}</span>
+2111:                                 </div>
+2112:                             </div>
+2113:                             <button
+2114:                                 onClick={() => setSelectedRecording(null)}
+2115:                                 className="icon-btn"
+2116:                                 style={{ background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+2117:                                 title="Cerrar"
+2118:                             >
+2119:                                 ✕
+2120:                             </button>
+2121:                         </div>
+2122: 
+2123:                         <div className="transcription-body" style={{
+2124:                             fontSize: '0.95rem', lineHeight: '1.6',
+
+
+--- Around line 2248 ---
+2233:                                         ℹ️ Se muestra el texto completo de la llamada ya que no se encontraron marcas de tiempo detalladas.
+2234:                                     </div>
+2235:                                     {transcriptionData[0].texto_completo}
+2236:                                 </div>
+2237:                             ) : (
+2238:                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+2239:                                     <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</div>
+2240:                                     No hay transcripción disponible para esta grabación.
+2241:                                 </div>
+2242:                             )}
+2243:                         </div>
+2244: 
+2245:                         <div style={{ padding: '1.5rem', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', background: '#f8fafc' }}>
+2246:                             <button className="btn" onClick={() => setSelectedRecording(null)} style={{ padding: '0.6rem 1.25rem', cursor: 'pointer', border: '1px solid var(--border-color)', background: 'white', fontWeight: '500' }}>Cerrar</button>
+2247:                             <button className="btn btn-primary" style={{ padding: '0.6rem 1.25rem', fontWeight: '500' }} disabled={isTranscriptionLoading || !transcriptionData}>
+2248:                                 Descargar Texto
+2249:                             </button>
+2250:                         </div>
+2251:                     </div>
+2252:                 </div>
+2253:             )}
+2254: 
+2255:             {/* ANALYSIS MODAL */}
+2256:             {selectedAnalysis && (
+2257:                 <div className="modal-overlay" style={{
+2258:                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+2259:                     backgroundColor: 'rgba(15, 23, 42, 0.7)', display: 'flex', justifyContent: 'center', alignItems: 'center',
+2260:                     zIndex: 1000, backdropFilter: 'blur(8px)'
+2261:                 }}>
+2262:                     <div className="modal-content" style={{
+2263:                         backgroundColor: '#ffffff', padding: '0', borderRadius: '1.25rem',
+2264:                         width: '92%', maxWidth: '900px', maxHeight: '90vh', overflow: 'hidden',
+2265:                         boxShadow: '0 25px 60px -15px rgba(180,83,9,0.2), 0 10px 30px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column',
+2266:                         animation: 'fadeIn 0.25s ease-out'
+2267:                     }}>
+

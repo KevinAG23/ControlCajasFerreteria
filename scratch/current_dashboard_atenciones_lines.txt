@@ -1,0 +1,83 @@
+--- Around line 331 ---
+321:         password: "",
+322:         confirmPassword: "",
+323:         role: "cajero",
+324:         cajaAsignada: ""
+325:     });
+326: 
+327:     // New Modals State
+328:     const [selectedCashierForDetail, setSelectedCashierForDetail] = useState(null);
+329:     const [selectedBoxForDetail, setSelectedBoxForDetail] = useState(null);
+330:     const [selectedCashierForClients, setSelectedCashierForClients] = useState(null);
+331:     const [selectedCashierForAtenciones, setSelectedCashierForAtenciones] = useState(null);
+332: 
+333: 
+334:     const isLoadingRef = useRef(false);
+335: 
+336:     // Fetch Data on Mount
+337:     const loadData = async (silent = false) => {
+338:         if (isLoadingRef.current) return;
+339:         isLoadingRef.current = true;
+340:         try {
+341:             const [usersData, contactsData, rolesData, cajasData, grabacionesData] = await Promise.all([
+342:                 getUsers(),
+343:                 getContacts(),
+344:                 getRoles(),
+345:                 getTodasCajas(),
+
+
+--- Around line 1194 ---
+1184:                                                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 1rem auto' }}><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>
+1185:                                                         <p>No hay cajas configuradas para analizar.</p>
+1186:                                                     </div>
+1187:                                                 )}
+1188:                                             </div>
+1189:                                         </div>
+1190:                                     </div>
+1191:                                 </section>
+1192:                             ) : (
+1193:                                 <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+1194:                                     {selectedCashierForAtenciones ? (
+1195:                                         <CashierAtencionesModal
+1196:                                             cashier={selectedCashierForAtenciones}
+1197:                                             onClose={() => setSelectedCashierForAtenciones(null)}
+1198:                                             inline={true}
+1199:                                         />
+1200:                                     ) : (
+1201:                                         <CashierList
+1202:                                             contacts={contacts}
+1203:                                             users={users}
+1204:                                             boxes={boxConfigs}
+1205:                                             recordings={allRecordings}
+1206:                                             onViewAtenciones={setSelectedCashierForAtenciones}
+1207:                                         />
+1208:                                     )}
+
+
+--- Around line 1196 ---
+1186:                                                     </div>
+1187:                                                 )}
+1188:                                             </div>
+1189:                                         </div>
+1190:                                     </div>
+1191:                                 </section>
+1192:                             ) : (
+1193:                                 <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+1194:                                     {selectedCashierForAtenciones ? (
+1195:                                         <CashierAtencionesModal
+1196:                                             cashier={selectedCashierForAtenciones}
+1197:                                             onClose={() => setSelectedCashierForAtenciones(null)}
+1198:                                             inline={true}
+1199:                                         />
+1200:                                     ) : (
+1201:                                         <CashierList
+1202:                                             contacts={contacts}
+1203:                                             users={users}
+1204:                                             boxes={boxConfigs}
+1205:                                             recordings={allRecordings}
+1206:                                             onViewAtenciones={setSelectedCashierForAtenciones}
+1207:                                         />
+1208:                                     )}
+1209:                                 </div>
+1210:                             )}
+

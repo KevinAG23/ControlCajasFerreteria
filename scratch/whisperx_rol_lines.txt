@@ -1,0 +1,65 @@
+--- Around line 389 ---
+379:     """
+380:     Inserta segmentos con speaker asignado por whisperx.assign_word_speakers().
+381:     """
+382:     with conn.cursor() as cur:
+383:         for orden, seg in enumerate(segments, start=1):
+384:             seg_id  = str(uuid.uuid4())
+385:             start   = float(seg.get("start", 0.0))
+386:             end     = float(seg.get("end", 0.0))
+387:             text    = (seg.get("text") or "").strip()
+388:             speaker = seg.get("speaker")
+389:             rol     = seg.get("rol_inferido")
+390: 
+391:             cur.execute(
+392:                 """
+393:                 INSERT INTO public.segmentos_transcripcion
+394:                 (id, transcripcion_id, inicio_segundo, fin_segundo, hablante, rol_inferido, texto, orden)
+395:                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+396:                 """,
+397:                 (seg_id, transcripcion_id, start, end, speaker, rol, text, orden),
+398:             )
+399: 
+400: 
+401: def _vram_free():
+402:     """Libera caché de CUDA sin eliminar los modelos de memoria."""
+403:     if torch.cuda.is_available():
+404:         torch.cuda.empty_cache()
+405:         gc.collect()
+406: 
+407: 
+408: # =========================
+
+
+--- Around line 394 ---
+384:             seg_id  = str(uuid.uuid4())
+385:             start   = float(seg.get("start", 0.0))
+386:             end     = float(seg.get("end", 0.0))
+387:             text    = (seg.get("text") or "").strip()
+388:             speaker = seg.get("speaker")
+389:             rol     = seg.get("rol_inferido")
+390: 
+391:             cur.execute(
+392:                 """
+393:                 INSERT INTO public.segmentos_transcripcion
+394:                 (id, transcripcion_id, inicio_segundo, fin_segundo, hablante, rol_inferido, texto, orden)
+395:                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+396:                 """,
+397:                 (seg_id, transcripcion_id, start, end, speaker, rol, text, orden),
+398:             )
+399: 
+400: 
+401: def _vram_free():
+402:     """Libera caché de CUDA sin eliminar los modelos de memoria."""
+403:     if torch.cuda.is_available():
+404:         torch.cuda.empty_cache()
+405:         gc.collect()
+406: 
+407: 
+408: # =========================
+409: # JOB PRINCIPAL
+410: # =========================
+411: def transcribe_job(grabacion_id: str, yyyymmdd: str):
+412:     """
+413:     Job RQ (cola whisperx):
+

@@ -1,0 +1,42 @@
+--- Around line 376 ---
+371:         )
+372:     )
+373:     return result.scalars().first()
+374: 
+375: # ---- TRANSCRIPCIONES ----
+376: async def get_transcripciones(db: AsyncSession, grabacion_id: UUID = None):
+377:     query = select(models.Transcripcion).options(selectinload(models.Transcripcion.segmentos))
+378:     if grabacion_id:
+379:         query = query.where(models.Transcripcion.grabacion_id == grabacion_id)
+380:     result = await db.execute(query)
+381:     return result.scalars().all()
+382: 
+383: # ---- ANALISIS ----
+384: async def get_analisis(db: AsyncSession, grabacion_id: UUID = None):
+385:     query = select(models.AnalisisGeneral).options(
+386:         selectinload(models.AnalisisGeneral.respuestas)
+387:         .selectinload(models.RespuestaEvaluacion.pregunta)
+388:         .selectinload(models.CatalogoPreguntas.categoria)
+389:     )
+390:     if grabacion_id:
+391:         query = query.where(
+392:             (models.AnalisisGeneral.grabacion_id == grabacion_id) |
+393:             (models.AnalisisGeneral.atencion_id.in_(
+394:                 select(models.Atencion.id).where(models.Atencion.grabacion_id == grabacion_id)
+395:             ))
+396:         )
+397:     result = await db.execute(query)
+398:     return result.scalars().all()
+399: 
+400: async def get_analisis_by_id(db: AsyncSession, analisis_id: UUID):
+401:     query = select(models.AnalisisGeneral).where(models.AnalisisGeneral.id == analisis_id).options(
+402:         selectinload(models.AnalisisGeneral.respuestas)
+403:         .selectinload(models.RespuestaEvaluacion.pregunta)
+404:         .selectinload(models.CatalogoPreguntas.categoria)
+405:     )
+406:     result = await db.execute(query)
+407:     return result.scalars().first()
+408: 
+409: async def update_analisis(db: AsyncSession, analisis_id: UUID, analisis_update: schemas.AnalisisGeneralUpdate):
+410:     query = select(models.AnalisisGeneral).where(models.AnalisisGeneral.id == analisis_id)
+

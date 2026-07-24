@@ -1,0 +1,42 @@
+--- Around line 395 ---
+390:                                                     }}>
+391:                                                         {isCajero ? '👤 Cajero (Agente)' : '👥 Usuario (Cliente)'}
+392:                                                     </span>
+393:                                                 </div>
+394:                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+395:                                                     {group.texts.map((t, tIdx) => (
+396:                                                         <div key={tIdx} style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+397:                                                             {t.inicio !== null && (
+398:                                                                 <span style={{
+399:                                                                     color: '#94a3b8',
+400:                                                                     fontSize: '0.75rem',
+401:                                                                     fontFamily: 'monospace',
+402:                                                                     whiteSpace: 'nowrap',
+403:                                                                     minWidth: '100px'
+404:                                                                 }}>
+405:                                                                     [{t.inicio.toFixed(2)}s - {t.fin.toFixed(2)}s]
+406:                                                                 </span>
+407:                                                             )}
+408:                                                             <span style={{
+409:                                                                 color: '#334155',
+410:                                                                 fontSize: '0.92rem',
+411:                                                                 lineHeight: '1.6',
+412:                                                                 fontFamily: 'system-ui, -apple-system, sans-serif'
+413:                                                             }}>
+414:                                                                 {t.text}
+415:                                                             </span>
+416:                                                         </div>
+417:                                                     ))}
+418:                                                 </div>
+419:                                             </div>
+420:                                         );
+421:                                     });
+422:                                 })()}
+423:                             </div>
+424:                         </div>
+425:                     </div>
+426:                 </div>
+427:             </div>
+428:         </div>
+429:     );
+

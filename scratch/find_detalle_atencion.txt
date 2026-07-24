@@ -1,0 +1,108 @@
+Line 581:                                     ⚠️ Oportunidades de Mejora / Acciones de Optimización <span style={{ color: '#9e8c81', fontWeight: '400', fontSize: '0.8rem' }}>({failedEvals.length})</span>
+Line 582:                                 </p>
+Line 583:                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+Line 584:                                     {failedEvals.map((ev, idx) => (
+Line 585:                                         <div key={idx} className="eval-card" style={{
+Line 586:                                             background: 'linear-gradient(135deg, #fff5f5 0%, white 100%)',
+Line 587:                                             borderRadius: '16px',
+Line 588:                                             border: '1px solid #fecdd3',
+Line 589:                                             borderLeft: `4px solid #ef4444`,
+Line 590:                                             padding: '1.1rem 1.25rem',
+Line 591:                                             boxShadow: '0 4px 12px rgba(239,68,68,0.03)',
+Line 592:                                         }}>
+Line 593:                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem', gap: '1rem' }}>
+Line 594:                                                 <span style={{ fontWeight: '700', color: '#431407', fontSize: '0.88rem', lineHeight: '1.35', flex: 1 }}>
+Line 595:                                                     {ev.pregunta_texto}
+Line 596:                                                 </span>
+Line 597:                                                 <span style={{
+Line 598:                                                     background: '#fee2e2',
+Line 599:                                                     color: '#ef4444',
+Line 600:                                                     border: '1px solid #fecdd3',
+Line 601:                                                     borderRadius: '8px',
+Line 602:                                                     padding: '0.2rem 0.6rem',
+Line 603:                                                     fontSize: '0.72rem',
+Line 604:                                                     fontWeight: '800',
+Line 605:                                                     flexShrink: 0,
+Line 606:                                                     textTransform: 'uppercase',
+Line 607:                                                     letterSpacing: '0.05em'
+Line 608:                                                 }}>
+Line 609:                                                     ✗ No cumple {ev.puntaje !== null ? `(${ev.puntaje} pts)` : ''}
+Line 610:                                                 </span>
+Line 611:                                             </div>
+Line 612:                                             <p style={{ margin: 0, fontSize: '0.85rem', color: '#4f3e35', lineHeight: '1.5' }}>
+Line 613:                                                 <strong style={{ color: '#ef4444' }}>Evidencia / Justificación:</strong> {ev.justificacion_ia}
+Line 614:                                             </p>
+Line 615:                                         </div>
+Line 616:                                     ))}
+Line 617:                                 </div>
+Line 618:                             </div>
+Line 619:                         )}
+Line 620: 
+Line 621:                         {/* Criterios Cumplidos */}
+Line 622:                         <div>
+Line 623:                             <p style={{ margin: '0 0 1rem', fontWeight: '800', fontSize: '0.95rem', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+Line 624:                                 ✓ Criterios Cumplidos / Fortalezas <span style={{ color: '#9e8c81', fontWeight: '400', fontSize: '0.8rem' }}>({passedEvals})</span>
+Line 625:                             </p>
+Line 626:                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+Line 627:                                 {(analysis.evaluaciones || []).filter(ev => ev.cumple).map((ev, idx) => {
+Line 628:                                     const isNum = ev.puntaje !== null;
+Line 629:                                     return (
+Line 630:                                         <div key={idx} className="eval-card" style={{
+Line 631:                                             background: 'linear-gradient(135deg, #f0fdf4 0%, white 100%)',
+Line 632:                                             borderRadius: '16px',
+Line 633:                                             border: '1px solid #bbf7d0',
+Line 634:                                             borderLeft: `4px solid #10b981`,
+Line 635:                                             padding: '1.1rem 1.25rem',
+Line 636:                                             boxShadow: '0 4px 12px rgba(16,185,129,0.03)',
+Line 637:                                         }}>
+Line 638:                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.6rem', gap: '1rem' }}>
+Line 639:                                                 <span style={{ fontWeight: '700', color: '#431407', fontSize: '0.88rem', lineHeight: '1.35', flex: 1 }}>
+Line 640:                                                     {ev.pregunta_texto}
+Line 641:                                                 </span>
+Line 642:                                                 <span style={{
+Line 643:                                                     background: '#dcfce7',
+Line 644:                                                     color: '#10b981',
+Line 645:                                                     border: '1px solid #bbf7d0',
+Line 646:                                                     borderRadius: '8px',
+Line 647:                                                     padding: '0.2rem 0.6rem',
+Line 648:                                                     fontSize: '0.72rem',
+Line 649:                                                     fontWeight: '800',
+Line 650:                                                     flexShrink: 0,
+Line 651:                                                     textTransform: 'uppercase',
+Line 652:                                                     letterSpacing: '0.05em'
+Line 653:                                                 }}>
+Line 654:                                                     ✓ Cumple {isNum ? `(${ev.puntaje} pts)` : ''}
+Line 655:                                                 </span>
+Line 656:                                             </div>
+Line 657:                                             <p style={{ margin: 0, fontSize: '0.82rem', color: '#4f3e35', lineHeight: '1.5' }}>
+Line 658:                                                 {ev.justificacion_ia}
+Line 659:                                             </p>
+Line 660:                                         </div>
+Line 661:                                     );
+Line 662:                                 })}
+Line 663:                             </div>
+Line 664:                         </div>
+Line 665: 
+Line 666:                         {/* Transcript */}
+Line 667:                         <div>
+Line 668:                             <p style={{ margin: '0 0 1rem', fontWeight: '700', fontSize: '0.95rem', color: '#431407' }}>
+Line 669:                                 Transcripción Original
+Line 670:                             </p>
+Line 671:                             <div style={{
+Line 672:                                 background: 'white', border: '1px solid #fed7aa',
+Line 673:                                 borderRadius: '16px', padding: '1.25rem',
+Line 674:                                 fontSize: '0.875rem', color: '#4f3e35',
+Line 675:                                 lineHeight: '1.7', fontStyle: 'italic', whiteSpace: 'pre-wrap',
+Line 676:                                 boxShadow: '0 4px 12px rgba(59,29,17,0.02)'
+Line 677:                             }}>
+Line 678:                                 {atencion.texto || 'No hay texto disponible.'}
+Line 679:                             </div>
+Line 680:                         </div>
+Line 681:                     </div>
+Line 682:                 </div>
+Line 683:             </div>
+Line 684:         </div>
+Line 685:     );
+Line 686: }
+Line 687: 
+Line 688: // ─── Main Modal ───────────────────────────────────────────────────────────────

@@ -1,0 +1,36 @@
+FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu22.04
+
+WORKDIR /app
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# Configurar apt para reintentar en caso de errores de red (SSL/TLS en Docker Windows)
+RUN echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::http::Timeout "60";' >> /etc/apt/apt.conf.d/80-retries && \
+    echo 'Acquire::https::Timeout "60";' >> /etc/apt/apt.conf.d/80-retries
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-venv \
+    python3-dev \
+    ffmpeg \
+    git \
+    curl \
+    build-essential && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN ln -sf /usr/bin/python3 /usr/bin/python && \
+    ln -sf /usr/bin/pip3 /usr/bin/pip || true
+
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel
+
+COPY requirements_whisperx.txt /app/requirements_whisperx.txt
+RUN python -m pip install --no-cache-dir -r /app/requirements_whisperx.txt
+
+COPY . /app
+
+CMD ["python", "run_worker_whisperx.py"]

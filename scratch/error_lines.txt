@@ -1,0 +1,70 @@
+Line 411:                                                                 lineHeight: '1.6',
+Line 412:                                                                 fontFamily: 'system-ui, -apple-system, sans-serif'
+Line 413:                                                             }}>
+Line 414:                                                                 {t.text}
+Line 415:                                                             </span>
+Line 416:                                                         </div>
+Line 417:                                                     ))}
+Line 418:                                                 </div>
+Line 419:                                             </div>
+Line 420:                                         );
+Line 421:                                     });
+Line 422:                                 })()}
+Line 423:                             </div>
+Line 424:                         </div>
+Line 425:                     </div>
+Line 426:                 </div>
+Line 427:             </div>
+Line 428:         </div>
+Line 429:     );
+Line 430: 
+Line 431:     if (inline) return innerContent;
+Line 432: 
+Line 433:     return (
+Line 434:         <div style={{
+Line 435:             position: 'fixed', inset: 0,
+Line 436:             background: 'rgba(59,29,17,0.4)', backdropFilter: 'blur(8px)',
+Line 437:             display: 'flex', alignItems: 'center', justifyContent: 'center',
+Line 438:             zIndex: 11000, padding: '1.5rem',
+Line 439:         }}>
+Line 440:                                 <span style={{ fontSize: '0.65rem', color: '#7c6a5f', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.3rem' }}>Calificación</span>
+Line 441:                                 <span style={{ fontSize: '2.8rem', fontWeight: '900', color: scoreColor, lineHeight: 1 }}>{score}</span>
+Line 442:                                 <span style={{ fontSize: '0.72rem', color: '#9e8c81', marginTop: '0.2rem' }}>de 100</span>
+Line 443:                                 {/* Progress arc  */}
+Line 444:                                 <div style={{ width: '100%', height: '4px', background: '#f3e8dc', borderRadius: '99px', marginTop: '0.75rem', overflow: 'hidden' }}>
+Line 445:                                     <div style={{ height: '100%', width: `${score}%`, background: scoreColor, borderRadius: '99px', transition: 'width 1s ease' }} />
+Line 446:                                 </div>
+Line 447:                             </div>
+Line 448: 
+Line 449:                             <div style={{
+Line 450:                                 borderRadius: '18px', padding: '1.25rem',
+Line 451:                                 background: sent.bg,
+Line 452:                                 border: `1px solid ${sent.border}`,
+Line 453:                                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+Line 454:                                 boxShadow: '0 4px 12px rgba(59,29,17,0.03)',
+Line 455:                             }}>
+Line 456:                                 <span style={{ fontSize: '2.5rem', marginBottom: '0.4rem' }}>{sent.emoji}</span>
+Line 457:                                 <span style={{ fontSize: '0.65rem', color: '#7c6a5f', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>Sentimiento</span>
+Line 458:                                 <span style={{ fontSize: '1rem', fontWeight: '800', color: sent.color }}>{sent.label}</span>
+Line 459:                             </div>
+Line 460:                         </div>
+Line 461: 
+Line 462:                         {/* Bar chart – numeric metrics */}
+Line 463:                         {numericEvals.length > 0 && (
+Line 464:                             <div style={{ background: 'white', border: '1px solid #fed7aa', borderRadius: '18px', padding: '1.25rem', boxShadow: '0 4px 12px rgba(59,29,17,0.03)' }}>
+Line 465:                                 <p style={{ margin: '0 0 0.25rem', fontWeight: '700', fontSize: '0.88rem', color: '#431407' }}>Métricas Numéricas</p>
+Line 466:                                 <p style={{ margin: '0 0 1rem', fontSize: '0.72rem', color: '#7c6a5f' }}>Puntajes obtenidos por escala</p>
+Line 467:                                 <div style={{ height: 200 }}>
+Line 468:                                     <ResponsiveContainer>
+Line 469:                                         <BarChart data={numericEvals} margin={{ top: 8, right: 8, left: -24, bottom: 0 }}>
+Line 470:                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3e8dc" />
+Line 471:                                             <XAxis dataKey="pregunta_texto" tick={{ fontSize: 10, fill: '#7c6a5f' }} tickFormatter={v => v.substring(0, 10) + '…'} axisLine={false} tickLine={false} />
+Line 472:                                             <YAxis tick={{ fontSize: 10, fill: '#7c6a5f' }} axisLine={false} tickLine={false} />
+Line 473:                                             <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(234,88,12,0.03)' }} />
+Line 474:                                             <Bar dataKey="puntaje" radius={[6, 6, 0, 0]} maxBarSize={44}>
+Line 475:                                                 {numericEvals.map((entry, i) => (
+Line 476:                                                     <Cell key={i} fill={entry.puntaje >= 8 ? '#10b981' : entry.puntaje >= 5 ? '#f59e0b' : '#ef4444'} />
+Line 477:                                                 ))}
+Line 478:                                             </Bar>
+Line 479:                                         </BarChart>
+Line 480:                                     </ResponsiveContainer>
