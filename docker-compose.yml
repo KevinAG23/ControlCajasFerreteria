@@ -10,7 +10,7 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./respaldo_corregido_limpio.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # - ./respaldo_corregido_limpio.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-gestion_audios_cajas1}" ]
       interval: 10s

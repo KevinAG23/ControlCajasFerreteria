@@ -244,20 +244,30 @@ def diarization_single_pass(input_file: str, out_wav: str) -> float:
     características del habla original necesarias para Pyannote Diarization.
     """
     t0 = time.perf_counter()
-    # Solo paso alto para eliminar frecuencias subgraves y loudnorm suave
-    filter_list = [
-        "highpass=f=90",
-        "loudnorm=I=-22:LRA=10:TP=-2"
-    ]
-    af = ",".join(filter_list)
-    cmd = [
-        FFMPEG, "-y",
-        "-i", input_file,
-        "-af", af,
-        "-ac", "1", "-ar", "16000",
-        "-sample_fmt", "s16",
-        out_wav
-    ]
+    if os.getenv("ENH_BYPASS", "false").strip().lower() == "true":
+        log.info("ENH_BYPASS activo: omitiendo filtros de diarización y convirtiendo directo.")
+        cmd = [
+            FFMPEG, "-y",
+            "-i", input_file,
+            "-ac", "1", "-ar", "16000",
+            "-sample_fmt", "s16",
+            out_wav
+        ]
+    else:
+        # Solo paso alto para eliminar frecuencias subgraves y loudnorm suave
+        filter_list = [
+            "highpass=f=90",
+            "loudnorm=I=-22:LRA=10:TP=-2"
+        ]
+        af = ",".join(filter_list)
+        cmd = [
+            FFMPEG, "-y",
+            "-i", input_file,
+            "-af", af,
+            "-ac", "1", "-ar", "16000",
+            "-sample_fmt", "s16",
+            out_wav
+        ]
     p = _run(cmd)
     if p.returncode != 0:
         raise RuntimeError(f"ffmpeg diarization pass falló:\n{p.stderr}")
@@ -271,42 +281,52 @@ def enhance_single_pass(input_file: str, out_wav: str) -> float:
     """
     t0 = time.perf_counter()
 
-    # 1. Filtros de entrada paso alto/bajo
-    filter_list = [
-        f"highpass=f={HIGHPASS_HZ}",
-        f"lowpass=f={LOWPASS_HZ}",
-    ]
-    
-    # 2. Denoise inteligente (no acumular RNNoise + afftdn automáticamente)
-    denoise_mode = os.getenv("ENH_DENOISE_MODE", "afftdn").lower()
-    rnnoise_path = Path("/app/models/rnnoise") / os.getenv("ENH_RNNOISE_MODEL", "bd.rnnn")
-    
-    if denoise_mode == "rnnoise" and rnnoise_path.exists():
-        filter_list.append(f"arnndn=m={rnnoise_path.as_posix()}")
-    elif denoise_mode == "afftdn" or denoise_mode != "none":
-        filter_list.append(f"afftdn=nr={AFFTDN_NR}:nf={AFFTDN_NF}")
+    if os.getenv("ENH_BYPASS", "false").strip().lower() == "true":
+        log.info("ENH_BYPASS activo: omitiendo filtros de enhance y convirtiendo directo.")
+        cmd = [
+            FFMPEG, "-y",
+            "-i", input_file,
+            "-ac", "1", "-ar", "16000",
+            "-sample_fmt", "s16",
+            out_wav
+        ]
+    else:
+        # 1. Filtros de entrada paso alto/bajo
+        filter_list = [
+            f"highpass=f={HIGHPASS_HZ}",
+            f"lowpass=f={LOWPASS_HZ}",
+        ]
         
-    # 3. Filtros acústicos de ecualización, compresión y normalización recomendados
-    filter_list.extend([
-        "equalizer=f=160:t=q:w=0.9:g=-4",  # Atenúa subgraves
-        "equalizer=f=280:t=q:w=1.0:g=-2",  # Atenúa graves resonantes
-        f"equalizer=f={PRESENCE_BOOST_HZ}:t=q:w=1:g={PRESENCE_BOOST_DB}",  # Presencia vocal (2600Hz)
-        "acompressor=threshold=-22dB:ratio=1.7:attack=15:release=220:makeup=1",  # Compresión suave
-        f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}",  # Normalización inteligente (-20 LUFS)
-    ])
-    
-    af = ",".join(filter_list)
+        # 2. Denoise inteligente (no acumular RNNoise + afftdn automáticamente)
+        denoise_mode = os.getenv("ENH_DENOISE_MODE", "afftdn").lower()
+        rnnoise_path = Path("/app/models/rnnoise") / os.getenv("ENH_RNNOISE_MODEL", "bd.rnnn")
+        
+        if denoise_mode == "rnnoise" and rnnoise_path.exists():
+            filter_list.append(f"arnndn=m={rnnoise_path.as_posix()}")
+        elif denoise_mode == "afftdn" or denoise_mode != "none":
+            filter_list.append(f"afftdn=nr={AFFTDN_NR}:nf={AFFTDN_NF}")
+            
+        # 3. Filtros acústicos de ecualización, compresión y normalización recomendados
+        filter_list.extend([
+            "equalizer=f=160:t=q:w=0.9:g=-4",  # Atenúa subgraves
+            "equalizer=f=280:t=q:w=1.0:g=-2",  # Atenúa graves resonantes
+            f"equalizer=f={PRESENCE_BOOST_HZ}:t=q:w=1:g={PRESENCE_BOOST_DB}",  # Presencia vocal (2600Hz)
+            "acompressor=threshold=-22dB:ratio=1.7:attack=15:release=220:makeup=1",  # Compresión suave
+            f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}",  # Normalización inteligente (-20 LUFS)
+        ])
+        
+        af = ",".join(filter_list)
 
-    cmd_enh = [
-        FFMPEG, "-y",
-        "-i", input_file,
-        "-af", af,
-        "-ac", "1", "-ar", "16000",
-        "-sample_fmt", "s16",
-        out_wav
-    ]
+        cmd = [
+            FFMPEG, "-y",
+            "-i", input_file,
+            "-af", af,
+            "-ac", "1", "-ar", "16000",
+            "-sample_fmt", "s16",
+            out_wav
+        ]
     
-    p_enh = _run(cmd_enh)
+    p_enh = _run(cmd)
     if p_enh.returncode != 0:
         raise RuntimeError(f"ffmpeg filtrado falló:\n{p_enh.stderr}")
 
