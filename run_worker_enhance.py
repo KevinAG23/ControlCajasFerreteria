@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from redis import Redis
 from rq import Queue
-from rq.worker import SimpleWorker
+from rq.worker import SimpleWorker, Worker
 
 load_dotenv()
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
@@ -21,15 +21,20 @@ class NoOpDeathPenalty:
         return False  # no suprime excepciones
 
 
-class WindowsWorker(SimpleWorker):
-    #  clave: reemplaza la clase de timeout por una no-op
-    death_penalty_class = NoOpDeathPenalty
+if os.name == "nt":
+    class WindowsWorker(SimpleWorker):
+        death_penalty_class = NoOpDeathPenalty
+    worker_class = WindowsWorker
+    print("Worker ENHANCE Windows-safe (SimpleWorker) configurado")
+else:
+    worker_class = Worker
+    print("Worker ENHANCE estándar (ForkWorker) configurado para Linux")
 
 
 if __name__ == "__main__":
     redis_conn = Redis.from_url(REDIS_URL)
     q = Queue("enhance", connection=redis_conn)
 
-    worker = WindowsWorker([q], connection=redis_conn)
-    print("Worker ENHANCE Windows-safe iniciado (sin SIGALRM)")
+    worker = worker_class([q], connection=redis_conn)
+    print("Worker ENHANCE iniciado y escuchando...")
     worker.work(with_scheduler=False)
