@@ -743,10 +743,10 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             if spk and spk in speaker_samples:
                 start_sample = int(float(s.get("start", 0.0)) * 16000)
                 end_sample = int(float(s.get("end", 0.0)) * 16000)
-                start_sample = max(0, min(start_sample, len(audio_diar)))
-                end_sample = max(0, min(end_sample, len(audio_diar)))
+                start_sample = max(0, min(start_sample, len(diar_audio)))
+                end_sample = max(0, min(end_sample, len(diar_audio)))
                 if end_sample > start_sample:
-                    speaker_samples[spk].append(audio_diar[start_sample:end_sample])
+                    speaker_samples[spk].append(diar_audio[start_sample:end_sample])
 
         # Calculamos el promedio de amplitud RMS para cada hablante
         for spk, list_of_arrays in speaker_samples.items():
