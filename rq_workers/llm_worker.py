@@ -362,7 +362,28 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
             }]
         
         # 1) Establecer Baseline a nivel de hablante (Pyannote)
-        cajero_spk = out.get("cajero_speaker")
+        db_cajero_spk = None
+        try:
+            res_met = db.execute(
+                text("SELECT metricas FROM public.grabaciones WHERE id=CAST(:gid AS uuid)"),
+                {"gid": grabacion_id}
+            ).fetchone()
+            if res_met and res_met[0]:
+                metrics_dict = res_met[0]
+                if isinstance(metrics_dict, str):
+                    import json
+                    try:
+                        metrics_dict = json.loads(metrics_dict)
+                    except:
+                        metrics_dict = {}
+                if isinstance(metrics_dict, dict):
+                    db_cajero_spk = metrics_dict.get("cajero_speaker")
+                    if db_cajero_spk:
+                        print(f"[LLM Worker] Cajero detectado acústicamente en BD: {db_cajero_spk}")
+        except Exception as e_met:
+            print(f"[LLM Worker] No se pudo leer cajero_speaker de BD: {e_met}")
+
+        cajero_spk = db_cajero_spk or out.get("cajero_speaker")
         if cajero_spk and isinstance(cajero_spk, str):
             cajero_spk = cajero_spk.strip().upper().replace(" ", "_").replace("-", "_")
             if cajero_spk in ["0", "00", "SPEAKER_0", "SPEAKER_00"]:

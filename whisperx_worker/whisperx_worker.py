@@ -725,9 +725,60 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         turn_counts = {}
         for s in segments:
             spk = s.get("speaker", "UNKNOWN")
-            dur = float(s.get("end", 0)) - float(s.get("start", 0))
+            dur = float(s.get("end", 0.0)) - float(s.get("start", 0.0))
             speaker_stats[spk] = speaker_stats.get(spk, 0.0) + dur
             turn_counts[spk] = turn_counts.get(spk, 0) + 1
+
+        # Algoritmo Acústico de Identificación del Cajero por Volumen Físico (RMS) y Actividad
+        import numpy as np
+        speaker_rms = {}
+        speaker_samples = {}
+        for spk in speakers_detectados:
+            if spk and spk != "UNKNOWN":
+                speaker_samples[spk] = []
+
+        # Recolectamos las muestras del audio de diarización correspondientes a cada hablante
+        for s in segments:
+            spk = s.get("speaker")
+            if spk and spk in speaker_samples:
+                start_sample = int(float(s.get("start", 0.0)) * 16000)
+                end_sample = int(float(s.get("end", 0.0)) * 16000)
+                start_sample = max(0, min(start_sample, len(audio_diar)))
+                end_sample = max(0, min(end_sample, len(audio_diar)))
+                if end_sample > start_sample:
+                    speaker_samples[spk].append(audio_diar[start_sample:end_sample])
+
+        # Calculamos el promedio de amplitud RMS para cada hablante
+        for spk, list_of_arrays in speaker_samples.items():
+            if list_of_arrays:
+                concatenated = np.concatenate(list_of_arrays)
+                rms = float(np.sqrt(np.mean(concatenated**2)))
+                speaker_rms[spk] = rms
+            else:
+                speaker_rms[spk] = 0.0
+
+        # Calificación combinada del Cajero (Loudness 50%, Duración 30%, Turnos 20%)
+        max_rms = max(speaker_rms.values()) if speaker_rms else 1.0
+        max_dur = max(speaker_stats.values()) if speaker_stats else 1.0
+        max_turns = max(turn_counts.values()) if turn_counts else 1.0
+
+        speaker_scores = {}
+        cajero_spk = "SPEAKER_00"  # default fallback
+        
+        valid_speakers = [s for s in speakers_detectados if s and s != "UNKNOWN"]
+        for spk in valid_speakers:
+            norm_rms = speaker_rms.get(spk, 0.0) / (max_rms if max_rms > 0 else 1.0)
+            norm_dur = speaker_stats.get(spk, 0.0) / (max_dur if max_dur > 0 else 1.0)
+            norm_turns = turn_counts.get(spk, 0) / (max_turns if max_turns > 0 else 1.0)
+            
+            score = 0.50 * norm_rms + 0.30 * norm_dur + 0.20 * norm_turns
+            speaker_scores[spk] = score
+            log.info("Speaker %s puntuación acústica: RMS=%.6f (norm=%.2f), Dur=%.1fs (norm=%.2f), Turnos=%d (norm=%.2f) -> Score=%.3f",
+                     spk, speaker_rms.get(spk, 0.0), norm_rms, speaker_stats.get(spk, 0.0), norm_dur, turn_counts.get(spk, 0), norm_turns, score)
+
+        if speaker_scores:
+            cajero_spk = max(speaker_scores, key=speaker_scores.get)
+        log.info(">>> Hablante acústicamente identificado como CAJERO: %s (Score: %.3f)", cajero_spk, speaker_scores.get(cajero_spk, 0.0))
 
         t4_elapsed = time.perf_counter() - t4
         log.info("[4/4] Speakers detectados: %s | %.1f s",
@@ -775,6 +826,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             whisper_metrics = {
                 "speakers_detected": len(speakers_detectados),
                 "processing_time_whisper": t_total_elapsed,
+                "cajero_speaker": cajero_spk,
                 "segments_count": len(segments),
                 "words_count": n_words,
                 "segments_no_speaker": segments_no_speaker,
