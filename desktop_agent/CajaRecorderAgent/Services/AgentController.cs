@@ -146,6 +146,52 @@ public class AgentController
                         changed = true;
                     }
 
+                    if (pingResult.DuracionSegmentoMinutos > 0 && pingResult.DuracionSegmentoMinutos != _settings.RecordingDurationMinutes)
+                    {
+                        _settings.RecordingDurationMinutes = pingResult.DuracionSegmentoMinutos;
+                        changed = true;
+                    }
+
+                    if (!string.IsNullOrEmpty(pingResult.MicrofonoAsignado) && pingResult.MicrofonoAsignado != _settings.MicrophoneName)
+                    {
+                        int foundId = -1;
+                        for (int i = 0; i < NAudio.Wave.WaveInEvent.DeviceCount; i++)
+                        {
+                            if (NAudio.Wave.WaveInEvent.GetCapabilities(i).ProductName == pingResult.MicrofonoAsignado)
+                            {
+                                foundId = i;
+                                break;
+                            }
+                        }
+
+                        if (foundId != -1)
+                        {
+                            _settings.MicrophoneId = foundId.ToString();
+                            _settings.MicrophoneName = pingResult.MicrofonoAsignado;
+                            changed = true;
+
+                            if (_recorder.State == RecorderState.Recording)
+                            {
+                                LogService.Info("Reiniciando grabacion por cambio de microfono desde el servidor.");
+                                await _recorder.StopAsync();
+                                await Task.Delay(500);
+                            }
+                        }
+                    }
+                    else if (string.IsNullOrEmpty(pingResult.MicrofonoAsignado) && !string.IsNullOrEmpty(_settings.MicrophoneName))
+                    {
+                        // Si el servidor lo quitó, limpiamos local
+                        _settings.MicrophoneId = "";
+                        _settings.MicrophoneName = "";
+                        changed = true;
+                        
+                        if (_recorder.State == RecorderState.Recording)
+                        {
+                            LogService.Info("Deteniendo grabacion por microfono quitado desde el servidor.");
+                            await _recorder.StopAsync();
+                        }
+                    }
+
                     // Pausa sincronizada desde el administrador
                     if (pingResult.EnPausa != _manualHold)
                     {

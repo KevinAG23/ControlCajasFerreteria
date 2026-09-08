@@ -102,6 +102,7 @@ async def get_todas_cajas(
 class PingPayload(BaseModel):
     is_recording: bool = False
     estado_grabacion: Optional[str] = None
+    lista_microfonos: Optional[list[str]] = None
 
 @router.post("/cajas/{caja_id}/ping")
 async def ping_caja(
@@ -120,8 +121,10 @@ async def ping_caja(
     db_caja.ultima_conexion = datetime.now(timezone.utc)
     if payload:
         db_caja.en_uso = payload.is_recording
-        if payload.estado_grabacion:
+        if payload.estado_grabacion is not None:
             db_caja.estado_grabacion = payload.estado_grabacion
+        if payload.lista_microfonos is not None:
+            db_caja.lista_microfonos = payload.lista_microfonos
 
     await db.commit()
     await db.refresh(db_caja)
@@ -145,7 +148,9 @@ async def ping_caja(
         "turno_tarde_inicio": db_caja.turno_tarde_inicio.isoformat() if db_caja.turno_tarde_inicio else "16:00:00",
         "turno_tarde_fin": db_caja.turno_tarde_fin.isoformat() if db_caja.turno_tarde_fin else "19:00:00",
         "grabacion_habilitada": db_caja.grabacion_habilitada,
-        "en_pausa": db_caja.en_pausa
+        "en_pausa": db_caja.en_pausa,
+        "duracion_segmento_minutos": db_caja.duracion_segmento_minutos,
+        "microfono_asignado": db_caja.microfono_asignado
     }
 
 class AsignarConfigRequest(BaseModel):
@@ -193,7 +198,7 @@ async def asignar_configuracion(
                     resolved_user_id = user_obj.id
 
     if req.caja_id_nueva:
-        update_data = {"en_uso": True}
+        update_data = {}
         if req.estado_operativo:
             if req.estado_operativo == "Mantenimiento":
                 update_data["estado_operativo"] = "En Mantenimiento"
