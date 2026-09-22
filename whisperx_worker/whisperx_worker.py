@@ -46,11 +46,12 @@ LANG           = os.getenv("WHISPERX_LANG", "es").strip()
 DEVICE_PREF    = os.getenv("WHISPERX_DEVICE", "cuda").strip().lower()
 BATCH_SIZE     = int(os.getenv("WHISPERX_BATCH_SIZE", "16"))
 MIN_SPEAKERS   = int(os.getenv("WHISPERX_MIN_SPEAKERS", "2"))
-MAX_SPEAKERS   = int(os.getenv("WHISPERX_MAX_SPEAKERS", "3"))
+MAX_SPEAKERS   = int(os.getenv("WHISPERX_MAX_SPEAKERS", "2"))
 
 # ASR Options — máxima precisión para call center español (objetivo ≥ 95%)
 # beam_size=10: exploración más amplia → menor WER (-5 a -10% vs beam=5)
-BEAM_SIZE      = int(os.getenv("WHISPERX_BEAM_SIZE", "10"))
+# beam_size=5: menor tasa de alucinaciones
+BEAM_SIZE      = int(os.getenv("WHISPERX_BEAM_SIZE", "5"))
 CONDITION_PREV = os.getenv("WHISPERX_CONDITION_PREV", "false").strip().lower() == "true"
 SUPPRESS_NUM   = os.getenv("WHISPERX_SUPPRESS_NUMERALS", "false").strip().lower() == "true"
 
@@ -60,9 +61,8 @@ INITIAL_PROMPT = os.getenv(
     "Conversación en una caja entre cajero y cliente. Se mencionan productos, precios, pagos, efectivo, tarjeta, factura y cambio."
 ).strip()
 
-# HOTWORDS: vocabulario específico del negocio que el modelo tiende a confundir
 # El motor de beam search favorece estas palabras durante la decodificación
-# → Soluciona OOV (Out-Of-Vocabulary): nombres propios, siglas, marcas
+# -> Soluciona OOV (Out-Of-Vocabulary): nombres propios, siglas, marcas
 # Formato CSV en .env: WHISPERX_HOTWORDS=cajero,cliente,factura
 _hotwords_raw = os.getenv(
     "WHISPERX_HOTWORDS",
@@ -70,15 +70,18 @@ _hotwords_raw = os.getenv(
 ).strip()
 HOTWORDS: list[str] = [w.strip() for w in _hotwords_raw.split(",") if w.strip()] if _hotwords_raw else []
 
-# Diarización — modelo configurable (pyannote 3.1 estable por defecto)
+# Diarización -> modelo configurable (pyannote 3.1 estable por defecto)
 DIAR_MODEL     = os.getenv(
     "WHISPERX_DIAR_MODEL",
     "pyannote/speaker-diarization-3.1"
 ).strip()
 
-# VAD Options - Ajustado a 0.40/0.30 para captar voz lejana del cliente en ambientes con ruido
-VAD_ONSET      = float(os.getenv("WHISPERX_VAD_ONSET", "0.40"))
-VAD_OFFSET     = float(os.getenv("WHISPERX_VAD_OFFSET", "0.30"))
+# VAD Options - Configuraciones de Whisper y VAD
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v3")
+# Bajamos los umbrales de VAD casi al mínimo para que no elimine voces reales que suenan bajo o lejos
+VAD_ONSET = float(os.getenv("WHISPERX_VAD_ONSET", "0.050"))
+VAD_OFFSET = float(os.getenv("WHISPERX_VAD_OFFSET", "0.020"))
+INITIAL_PROMPT = os.getenv("WHISPERX_INITIAL_PROMPT", "Bienvenidos a la ferretería. Tenemos tubos de PVC, clavos, tornillos, pintura, cemento, alambre, pulgadas, pernos, lijas, brochas. ¿Desea factura con datos o consumidor final? Son cinco dólares. Muchas gracias, vuelva pronto.")
 
 # ---- LÍMITES DE RECURSOS (objetivo: máximo 70% de cada recurso) ----
 VRAM_FRACTION  = float(os.getenv("WHISPERX_VRAM_FRACTION", "0.70"))
@@ -185,37 +188,29 @@ def _get_models():
     else:
         log.info("CPU THREADS: auto (%d hilos detectados por PyTorch)", torch.get_num_threads())
 
-    # ----- ASR OPTIONS — máxima precisión -----
+    # ----- ASR OPTIONS - Estándar 100% Nativo (sin filtros agresivos) -----
     asr_options = {
-        "beam_size": BEAM_SIZE,          # ↑ mayor → mejor WER (10 recomendado)
-        "patience": 1.0,
-        "length_penalty": 1.0,
-        "temperatures": (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),  # fallback gradual anti-alucinación
-        "condition_on_previous_text": CONDITION_PREV,       # False = anti-loops
+        "beam_size": BEAM_SIZE,
+        "condition_on_previous_text": False,  # FORZADO A FALSE: Evita repeticiones en silencios
         "suppress_numerals": SUPPRESS_NUM,
-        "initial_prompt": INITIAL_PROMPT or None,
-        # Umbrales de calidad estándar — evitan filtrar voz baja del cliente
-        "compression_ratio_threshold": 2.4,
-        "no_speech_threshold": 0.6,
-        "log_prob_threshold": -1.0,
+        "initial_prompt": INITIAL_PROMPT if INITIAL_PROMPT else None,
+        "hotwords": ",".join(HOTWORDS) if HOTWORDS else None,
+        "no_speech_threshold": 0.85, # Aumentado para rechazar ruido de fondo (def: 0.6)
+        "logprob_threshold": -1.0
     }
 
     # ----- VAD OPTIONS -----
+    # Elevamos ligeramente el VAD_ONSET para no transcribir puro ruido
     vad_options = {
-        "vad_onset": VAD_ONSET,
-        "vad_offset": VAD_OFFSET,
+        "vad_onset": 0.200, 
+        "vad_offset": 0.050,
     }
 
     log.info("=" * 60)
-    log.info("Cargando modelos WhisperX — Configuración (objetivo ≥ 95%%):")
+    log.info("Cargando modelos WhisperX - Configuración Estándar de Producción:")
     log.info("  ASR model:     %s", MODEL_SIZE)
     log.info("  Device:        %s | compute_type=%s", device, compute_type)
     log.info("  Batch size:    %d", BATCH_SIZE)
-    log.info("  Beam size:     %d", BEAM_SIZE)
-    log.info("  Condition prev:%s", CONDITION_PREV)
-    log.info("  Suppress nums: %s", SUPPRESS_NUM)
-    log.info("  Initial prompt:%s", (INITIAL_PROMPT or "")[:80])
-    log.info("  Hotwords (%d): %s", len(HOTWORDS), ", ".join(HOTWORDS[:8]) + ("..." if len(HOTWORDS) > 8 else ""))
     log.info("  VAD onset:     %.3f | offset: %.3f", VAD_ONSET, VAD_OFFSET)
     log.info("  Diarización:   %s", DIAR_MODEL)
     log.info("  Speakers:      min=%d max=%d", MIN_SPEAKERS, MAX_SPEAKERS)
@@ -224,7 +219,7 @@ def _get_models():
     t0 = time.perf_counter()
 
     # 1) ASR model (faster-whisper backend vía whisperx)
-    log.info("[1/3] Cargando ASR model...")
+    log.info("[1/3] Cargando ASR model (estándar)...")
     _ASR_MODEL = whisperx.load_model(
         MODEL_SIZE,
         device,
@@ -273,147 +268,16 @@ def _get_models():
 # =========================
 # HELPERS
 # =========================
-def _utcnow():
-    return datetime.now(timezone.utc)
-
-
 def clean_transcription_segments(segments: list) -> list:
     """
-    Cleans segments to prevent hallucinated loops and repetitions:
-    1. Removes consecutive segments with identical text (ignoring case, spaces, and punctuation).
-    2. Filters out repetitive word patterns inside a single segment text (e.g., 'gracias gracias' -> 'gracias').
-    3. Excludes segments containing common Whisper hallucination loops (e.g., 'gracias por ver el video').
-    4. Trims whitespace and filters out empty text segments.
+    Estándar 100% nativo: Retorna los segmentos intactos para no perder NADA 
+    del texto original devuelto por el modelo WhisperX.
     """
-    import re
-    cleaned = []
-    
-    # Frases de alucinación comunes de Whisper en silencio/ruido (minúsculas y sin puntuación)
-    HALLUCINATIONS = {
-        "gracias por ver",
-        "gracias por ver el video",
-        "gracias por ver el video de hoy",
-        "gracias por ver este video",
-        "gracias por ver el video de",
-        "gracias por ver el video de hoy",
-        "gracias por ver este video de hoy",
-        "gracias por ver este video de",
-        "gracias por ver el video de hoy",
-        "gracias por ver el video de",
-        "gracias por ver el video de hoy",
-        "gracias por ver a todos",
-        "suscribete al canal",
-        "suscribete",
-        "suscribirse",
-        "subtitulos por",
-        "subtitulos",
-        "gracias por su atencion",
-        "gracias por el video",
-        "ver el video",
-        "cristian",
-        "gracias por ver este",
-        "gracias por ver el",
-        "gracias por ver a",
-        "youtube premium es youtube sin anuncios",
-        "videos sin anuncios en la app youtube kids",
-        "youtube kids",
-        "youtube premium",
-        "wwwcdcgovar",
-        "cdcgovar",
-        "cdcgov",
-        "sin anuncios",
-        "videos sin anuncios",
-        "mas informacion wwwcdcgovar"
-    }
+    return segments
 
-    def normalize(text):
-        import unicodedata
-        text = text.lower().strip()
-        # Strip accents to catch strings like 'suscríbete' -> 'suscribete'
-        text = "".join(c for c in unicodedata.normalize('NFD', text) if unicodedata.category(c) != 'Mn')
-        text = re.sub(r'[^\w\s]', '', text)
-        return ' '.join(text.split())
 
-    def clean_word_repeats(text):
-        words = text.split()
-        if not words:
-            return ""
-        
-        new_words = []
-        last_w = None
-        repeat_count = 0
-        for w in words:
-            norm_w = normalize(w)
-            if last_w and norm_w == normalize(last_w):
-                repeat_count += 1
-                if repeat_count < 2:
-                    new_words.append(w)
-            else:
-                repeat_count = 0
-                new_words.append(w)
-                last_w = w
-        return " ".join(new_words)
-
-    for seg in segments:
-        text = (seg.get("text") or "").strip()
-        if not text:
-            continue
-            
-        text = clean_word_repeats(text)
-        if not text:
-            continue
-            
-        norm_text = normalize(text)
-        
-        # 1. Omitir segmentos que contengan alguna frase típica de alucinación de Whisper
-        is_hallucination = False
-        for phrase in HALLUCINATIONS:
-            if phrase in norm_text:
-                is_hallucination = True
-                break
-                
-        # Filtro global e incondicional para evitar URLs, "www." y el dominio albertosanagustin
-        if not is_hallucination:
-            lower_raw = text.lower()
-            if "www" in lower_raw or "www" in norm_text or "http" in lower_raw or ".com" in lower_raw or ".gov" in lower_raw or "albertosanagustin" in norm_text:
-                is_hallucination = True
-                
-        # 2. Si el segmento contiene ÚNICAMENTE marcadores de música/ruido/agradecimientos aislados, se descarta
-        if not is_hallucination:
-            words_set = set(norm_text.split())
-            if words_set.issubset({"musica", "music", "sonido", "ruido", "gracias"}):
-                is_hallucination = True
-                
-        # 3. Filtrar alucinaciones estiradas en silencios usando la densidad de habla (caracteres por segundo)
-        start = seg.get("start")
-        end = seg.get("end")
-        if not is_hallucination and start is not None and end is not None:
-            duration = end - start
-            if duration > 0.1:
-                clean_len = len(re.sub(r'[^\w]', '', norm_text))
-                density = clean_len / duration
-                # Si el segmento dura más de 5.0s, debe tener una densidad mínima de 1.0 caracteres/segundo y al menos 10 caracteres limpios
-                if duration > 5.0 and (clean_len < 10 or density < 1.0):
-                    is_hallucination = True
-                
-        if is_hallucination:
-            continue
-            
-        is_duplicate = False
-        for last_seg in cleaned[-3:]:
-            if normalize(last_seg.get("text", "")) == norm_text:
-                is_duplicate = True
-                break
-                
-        if is_duplicate:
-            if cleaned:
-                cleaned[-1]["end"] = max(cleaned[-1]["end"], seg.get("end", cleaned[-1]["end"]))
-            continue
-            
-        seg["text"] = text
-        cleaned.append(seg)
-        
-    return cleaned
+def _utcnow():
+    return datetime.now(timezone.utc)
 
 
 def _enhanced_path(grabacion_id: str, yyyymmdd: str) -> Path:
@@ -605,6 +469,112 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
 
         language_code = LANG or base_result.get("language", "es")
 
+        # --- FILTRO ANTIALUCINACIONES ---
+        # WhisperX a menudo alucina frases de Youtube o repite el prompt inicial en silencios.
+        known_hallucinations = [
+            "gracias por ver el video",
+            "gracias por ver el vídeo",
+            "atención al cliente en caja",
+            "atencion al cliente en caja",
+            "subtítulos realizados",
+            "subtitulos realizados",
+            "amara.org",
+            "suscríbete",
+            "suscribete",
+            "gracias por su atención",
+            "gracias por su atencion",
+            "gracias por su compania",
+            "música música",
+            "musica musica",
+            "ok bien si chao",
+            "bien si chao",
+            "se mencionan",
+            "pulgadas medidas precios",
+            "el cajero realiza la venta",
+            "conversacion de atencion al cliente",
+            "conversación de atención al cliente",
+            "subtítulos por la comunidad de amara.org",
+            "subtítulos por",
+            "suscríbete al canal",
+            "www.cdc.gov",
+            "cdc.gov",
+            "más información"
+        ]
+        
+        if INITIAL_PROMPT:
+            # Añadir sub-frases clave del prompt para atrapar alucinaciones variadas
+            known_hallucinations.extend([
+                "el cajero realiza la venta de",
+                "la venta de artículos como",
+                "se mencionan pulgadas, medidas",
+                "precios y facturas",
+                "bienvenidos a la ferreteria",
+                "tenemos tubos de pvc",
+                "desea factura con datos o consumidor final",
+                "muchas gracias vuelva pronto",
+                "son cinco dolares"
+            ])
+
+        filtered_segments = []
+        prev_clean_text = None
+        
+        for seg in base_result.get("segments", []):
+            text_lower = seg["text"].lower().strip()
+            text_clean = text_lower.replace(".", "").replace(",", "").replace("!", "").replace("¿", "").replace("?", "").replace("¡", "")
+            words = text_clean.split()
+            
+            is_hallucination = False
+            for h in known_hallucinations:
+                h_clean = h.lower().replace(".", "").replace(",", "")
+                # Solo borramos si el segmento contiene la alucinación, O si el segmento ES casi igual a la alucinación
+                # Para evitar borrar palabras sueltas, requerimos que el text_clean sea largo si vamos a usar "text_clean in h_clean"
+                if len(h_clean) > 10:
+                    if (h_clean in text_clean) or (len(text_clean) > 15 and text_clean in h_clean):
+                        is_hallucination = True
+                        break
+                        
+            if is_hallucination:
+                log.warning(f"FILTRADO (Alucinacion de Prompt detectada): '{seg['text']}'")
+                continue
+                
+            # Filtro: Repetición intra-segmento (misma palabra muchas veces)
+            if len(words) >= 4:
+                counts = __import__('collections').Counter(words)
+                top_freq = counts.most_common(1)[0][1]
+                if top_freq >= 4 and (top_freq / len(words)) >= 0.5:
+                    log.warning(f"FILTRADO (Repeticion palabra intra-segmento): '{seg['text']}'")
+                    continue
+                    
+            # Filtro: Repetición de secuencia (Ej: "A B C A B C" o "A B A B A B")
+            n = len(words)
+            if n >= 4 and n % 2 == 0 and words[:n//2] == words[n//2:]:
+                log.warning(f"FILTRADO (Secuencia repetida x2): '{seg['text']}'")
+                continue
+            if n >= 6 and n % 3 == 0 and words[:n//3] * 3 == words:
+                log.warning(f"FILTRADO (Secuencia repetida x3): '{seg['text']}'")
+                continue
+
+            # Filtro: Inter-segmento (repite el segmento anterior exacto)
+            if prev_clean_text and text_clean == prev_clean_text and len(words) <= 8:
+                log.warning(f"FILTRADO (Repeticion inter-segmento exacta): '{seg['text']}'")
+                continue
+                
+            # Filtro: Alucinación por silencio (pocas palabras, mucho tiempo)
+            seg_duration = seg.get("end", 0) - seg.get("start", 0)
+            if len(words) <= 6 and seg_duration > 6.0:
+                log.warning(f"FILTRADO (Muy pocas palabras {len(words)} en mucho tiempo {seg_duration:.1f}s): '{seg['text']}'")
+                continue
+            
+            # Ignorar si es extremadamente corto y solo ruido
+            if len(text_clean) < 2:
+                continue
+                
+            prev_clean_text = text_clean
+            filtered_segments.append(seg)
+            
+        base_result["segments"] = filtered_segments
+        # --------------------------------
+
         n_segments_raw = len(base_result.get("segments", []))
         t1_elapsed = time.perf_counter() - t1
         rtf_asr = t1_elapsed / max(audio_duration_sec, 0.1)
@@ -640,16 +610,12 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         _log_vram("post-align")
         _vram_free()
 
-        # Si min y max speakers son iguales, forzamos num_speakers directo para mayor precisión
-        diar_kwargs = {}
-        if MIN_SPEAKERS == MAX_SPEAKERS:
-            log.info("[3/4] Diarizando (num_speakers=%d)...", MIN_SPEAKERS)
-            diar_kwargs["num_speakers"] = MIN_SPEAKERS
-        else:
-            log.info("[3/4] Diarizando (min_speakers=%d, max_speakers=%d)...",
-                     MIN_SPEAKERS, MAX_SPEAKERS)
-            diar_kwargs["min_speakers"] = MIN_SPEAKERS
-            diar_kwargs["max_speakers"] = MAX_SPEAKERS
+        # WhisperX DiarizationPipeline expects min_speakers and max_speakers
+        diar_kwargs = {
+            "min_speakers": MIN_SPEAKERS,
+            "max_speakers": MAX_SPEAKERS
+        }
+        log.info("[3/4] Diarizando (min_speakers=%d, max_speakers=%d)...", MIN_SPEAKERS, MAX_SPEAKERS)
 
         t3 = time.perf_counter()
 
@@ -707,10 +673,10 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
                 
                 if speaker_overlaps:
                     seg["speaker"] = max(speaker_overlaps, key=speaker_overlaps.get)
-                elif last_speaker and (start - last_segment_end) <= 5.0:
+                elif last_speaker:
                     seg["speaker"] = last_speaker
                 else:
-                    seg["speaker"] = "UNKNOWN"
+                    seg["speaker"] = "SPEAKER_00"
             
             last_speaker = seg.get("speaker")
             last_segment_end = end
@@ -757,7 +723,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             else:
                 speaker_rms[spk] = 0.0
 
-        # Calificación combinada del Cajero (Loudness 50%, Duración 30%, Turnos 20%)
+        # Calificación combinada del Cajero (Loudness 85%, Duración 10%, Turnos 5%)
         max_rms = max(speaker_rms.values()) if speaker_rms else 1.0
         max_dur = max(speaker_stats.values()) if speaker_stats else 1.0
         max_turns = max(turn_counts.values()) if turn_counts else 1.0
@@ -771,7 +737,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             norm_dur = speaker_stats.get(spk, 0.0) / (max_dur if max_dur > 0 else 1.0)
             norm_turns = turn_counts.get(spk, 0) / (max_turns if max_turns > 0 else 1.0)
             
-            score = 0.50 * norm_rms + 0.30 * norm_dur + 0.20 * norm_turns
+            score = 0.85 * norm_rms + 0.10 * norm_dur + 0.05 * norm_turns
             speaker_scores[spk] = score
             log.info("Speaker %s puntuación acústica: RMS=%.6f (norm=%.2f), Dur=%.1fs (norm=%.2f), Turnos=%d (norm=%.2f) -> Score=%.3f",
                      spk, speaker_rms.get(spk, 0.0), norm_rms, speaker_stats.get(spk, 0.0), norm_dur, turn_counts.get(spk, 0), norm_turns, score)
@@ -925,3 +891,15 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             conn.close()
         except Exception:
             pass
+        
+        # --- SOLUCION OOM EXTREMA ---
+        log.info("Ejecutando limpieza forzada de memoria (GC + VRAM)...")
+        import gc
+        import torch
+        # Limpiamos recolección de basura de Python
+        gc.collect()
+        # Vaciamos VRAM para evitar Out of Memory y Segmentation Faults (SIGKILL 139)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
+        log.info("Memoria liberada exitosamente.")

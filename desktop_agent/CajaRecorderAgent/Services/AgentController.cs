@@ -21,6 +21,11 @@ public class AgentController
     private readonly DispatcherTimer _serverCheckTimer;
 
     private bool _manualHold = false;
+    private bool? _enPausaOverride = null;
+    private bool? _grabacionHabilitadaOverride = null;
+    private int? _duracionOverride = null;
+    private string _microfonoOverride = null;
+    private Dictionary<string, string> _horariosOverride = null;
     private DateTime? _segmentStart;
     private readonly TimeSpan _segmentDuration = TimeSpan.FromMinutes(10);
     private bool _tickBusy = false;
@@ -86,136 +91,166 @@ public class AgentController
 
             if (isConnected && !string.IsNullOrWhiteSpace(_settings.CajaId))
             {
+                PingResult pingResult = null;
                 try {
                     bool isRecording = _recorder.State == RecorderState.Recording;
                     string estadoGrabacion = GetEstadoGrabacion();
-                    var pingResult = await api.PingAsync(_settings.CajaId, isRecording, estadoGrabacion);
-                    
-                    bool changed = false;
-                    if (!string.IsNullOrEmpty(pingResult.EstadoOperativo) && pingResult.EstadoOperativo != _settings.EstadoOperativo)
-                    {
-                        _settings.EstadoOperativo = pingResult.EstadoOperativo;
-                        changed = true;
+                    pingResult = await api.PingAsync(_settings.CajaId, isRecording, estadoGrabacion, null, _enPausaOverride, _grabacionHabilitadaOverride, _microfonoOverride, _horariosOverride, _duracionOverride);
+                      
+                        // Solo resetear si se enviaron con exito
+                        if (_enPausaOverride.HasValue) _enPausaOverride = null;
+                        if (_grabacionHabilitadaOverride.HasValue) _grabacionHabilitadaOverride = null;
+                        if (_microfonoOverride != null) _microfonoOverride = null;
+                        if (_horariosOverride != null) _horariosOverride = null;
+                        if (_duracionOverride.HasValue) _duracionOverride = null;
                     }
-                    if (pingResult.ContactoId != _settings.CajeroId || pingResult.CajeroNombre != _settings.Cajero)
+                    catch (Exception ex)
                     {
-                        LogService.Info($"Cambio de cajero detectado: anterior={_settings.Cajero}, nuevo={pingResult.CajeroNombre}");
-                        
-                        // Si está grabando actualmente, detenemos para cerrar el segmento del cajero anterior
-                        if (_recorder.State == RecorderState.Recording)
+                        LogService.Warn($"CheckServerConnection PingAsync fail: {ex.Message}");
+                        if (ex.Message.Contains("401") || ex.Message.Contains("Unauthorized"))
                         {
-                            LogService.Info("Deteniendo grabación actual para rotar archivo con el cajero anterior.");
-                            await _recorder.StopAsync();
+                            LogService.Info("Token expirado, intentando auto-login...");
+                            try
+                            {
+                                var token = await api.LoginAsync(_settings.SavedUser, _settings.SavedPassword);
+                                SessionService.SetToken(token);
+                                LogService.Info("Re-login exitoso.");
+                            }
+                            catch (Exception loginEx)
+                            {
+                                LogService.Error("Re-login falló", loginEx);
+                            }
                         }
-
-                        _settings.CajeroId = pingResult.ContactoId;
-                        _settings.Cajero = pingResult.CajeroNombre;
-                        changed = true;
-                        
-                        if (string.IsNullOrEmpty(pingResult.ContactoId) && (_settings.EstadoOperativo == "En Mantenimiento" || _settings.EstadoOperativo == "Fuera de Servicio"))
+                    }
+                    
+                    if (pingResult != null)
+                    {
+                        if (pingResult.RequireUpdate)
                         {
                             if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
                                 await _recorder.StopAsync();
-                        }
-                    }
-
-                    if (TimeSpan.TryParse(pingResult.TurnoMananaInicio, out var tmi) && tmi != _settings.TurnoMananaInicio)
-                    {
-                        _settings.TurnoMananaInicio = tmi;
-                        changed = true;
-                    }
-                    if (TimeSpan.TryParse(pingResult.TurnoMananaFin, out var tmf) && tmf != _settings.TurnoMananaFin)
-                    {
-                        _settings.TurnoMananaFin = tmf;
-                        changed = true;
-                    }
-                    if (TimeSpan.TryParse(pingResult.TurnoTardeInicio, out var tti) && tti != _settings.TurnoTardeInicio)
-                    {
-                        _settings.TurnoTardeInicio = tti;
-                        changed = true;
-                    }
-                    if (TimeSpan.TryParse(pingResult.TurnoTardeFin, out var ttf) && ttf != _settings.TurnoTardeFin)
-                    {
-                        _settings.TurnoTardeFin = ttf;
-                        changed = true;
-                    }
-
-                    if (pingResult.GrabacionHabilitada != _settings.GrabacionHabilitada)
-                    {
-                        _settings.GrabacionHabilitada = pingResult.GrabacionHabilitada;
-                        changed = true;
-                    }
-
-                    if (pingResult.DuracionSegmentoMinutos > 0 && pingResult.DuracionSegmentoMinutos != _settings.RecordingDurationMinutes)
-                    {
-                        _settings.RecordingDurationMinutes = pingResult.DuracionSegmentoMinutos;
-                        changed = true;
-                    }
-
-                    if (!string.IsNullOrEmpty(pingResult.MicrofonoAsignado) && pingResult.MicrofonoAsignado != _settings.MicrophoneName)
-                    {
-                        int foundId = -1;
-                        for (int i = 0; i < NAudio.Wave.WaveInEvent.DeviceCount; i++)
-                        {
-                            if (NAudio.Wave.WaveInEvent.GetCapabilities(i).ProductName == pingResult.MicrofonoAsignado)
-                            {
-                                foundId = i;
-                                break;
-                            }
+                            
+                            _serverCheckTimer.Stop();
+                            System.Windows.MessageBox.Show("Esta versión del agente de escritorio es muy antigua y ya no es compatible. Por favor, instale la versión v2.0.0 o superior.", "Actualización Obligatoria", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+                            System.Windows.Application.Current.Shutdown();
+                            return;
                         }
 
-                        if (foundId != -1)
+                        bool changed = false;
+                        if (!string.IsNullOrEmpty(pingResult.EstadoOperativo) && pingResult.EstadoOperativo != _settings.EstadoOperativo)
                         {
-                            _settings.MicrophoneId = foundId.ToString();
-                            _settings.MicrophoneName = pingResult.MicrofonoAsignado;
+                            _settings.EstadoOperativo = pingResult.EstadoOperativo;
                             changed = true;
-
+                        }
+                        if (pingResult.ContactoId != _settings.CajeroId || pingResult.CajeroNombre != _settings.Cajero)
+                        {
+                            LogService.Info($"Cambio de cajero detectado: anterior={_settings.Cajero}, nuevo={pingResult.CajeroNombre}");
+                            
+                            // Si está grabando actualmente, detenemos para cerrar el segmento del cajero anterior
                             if (_recorder.State == RecorderState.Recording)
                             {
-                                LogService.Info("Reiniciando grabacion por cambio de microfono desde el servidor.");
+                                LogService.Info("Deteniendo grabación actual para rotar archivo con el cajero anterior.");
                                 await _recorder.StopAsync();
-                                await Task.Delay(500);
+                            }
+
+                            _settings.CajeroId = pingResult.ContactoId;
+                            _settings.Cajero = pingResult.CajeroNombre;
+                            changed = true;
+                            
+                            if (string.IsNullOrEmpty(pingResult.ContactoId) && (_settings.EstadoOperativo == "En Mantenimiento" || _settings.EstadoOperativo == "Fuera de Servicio"))
+                            {
+                                if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
+                                    await _recorder.StopAsync();
                             }
                         }
-                    }
-                    else if (string.IsNullOrEmpty(pingResult.MicrofonoAsignado) && !string.IsNullOrEmpty(_settings.MicrophoneName))
-                    {
-                        // Si el servidor lo quitó, limpiamos local
-                        _settings.MicrophoneId = "";
-                        _settings.MicrophoneName = "";
-                        changed = true;
-                        
-                        if (_recorder.State == RecorderState.Recording)
+
+                        if (TimeSpan.TryParse(pingResult.TurnoMananaInicio, out var tmi) && tmi != _settings.TurnoMananaInicio)
                         {
-                            LogService.Info("Deteniendo grabacion por microfono quitado desde el servidor.");
-                            await _recorder.StopAsync();
+                            _settings.TurnoMananaInicio = tmi;
+                            changed = true;
+                        }
+                        if (TimeSpan.TryParse(pingResult.TurnoMananaFin, out var tmf) && tmf != _settings.TurnoMananaFin)
+                        {
+                            _settings.TurnoMananaFin = tmf;
+                            changed = true;
+                        }
+                        if (TimeSpan.TryParse(pingResult.TurnoTardeInicio, out var tti) && tti != _settings.TurnoTardeInicio)
+                        {
+                            _settings.TurnoTardeInicio = tti;
+                            changed = true;
+                        }
+                        if (TimeSpan.TryParse(pingResult.TurnoTardeFin, out var ttf) && ttf != _settings.TurnoTardeFin)
+                        {
+                            _settings.TurnoTardeFin = ttf;
+                            changed = true;
+                        }
+
+                        if (pingResult.GrabacionHabilitada != _settings.GrabacionHabilitada)
+                        {
+                            _settings.GrabacionHabilitada = pingResult.GrabacionHabilitada;
+                            changed = true;
+                        }
+
+                        if (pingResult.DuracionSegmentoMinutos > 0 && pingResult.DuracionSegmentoMinutos != _settings.RecordingDurationMinutes)
+                        {
+                            _settings.RecordingDurationMinutes = pingResult.DuracionSegmentoMinutos;
+                            changed = true;
+                        }
+
+                        if (!string.IsNullOrEmpty(pingResult.MicrofonoAsignado) && pingResult.MicrofonoAsignado != _settings.MicrophoneName)
+                        {
+                            int foundId = -1;
+                            for (int i = 0; i < NAudio.Wave.WaveInEvent.DeviceCount; i++)
+                            {
+                                if (NAudio.Wave.WaveInEvent.GetCapabilities(i).ProductName == pingResult.MicrofonoAsignado)
+                                {
+                                    foundId = i;
+                                    break;
+                                }
+                            }
+
+                            if (foundId != -1)
+                            {
+                                _settings.MicrophoneId = foundId.ToString();
+                                _settings.MicrophoneName = pingResult.MicrofonoAsignado;
+                                changed = true;
+
+                                if (_recorder.State == RecorderState.Recording)
+                                {
+                                    LogService.Info("Reiniciando grabacion por cambio de microfono desde el servidor.");
+                                    await _recorder.StopAsync();
+                                    await Task.Delay(500);
+                                }
+                            }
+                        }
+                        else if (string.IsNullOrEmpty(pingResult.MicrofonoAsignado) && !string.IsNullOrEmpty(_settings.MicrophoneName))
+                        {
+                            // El servidor no tiene el micrófono asignado, enviemos el nuestro en el próximo ping
+                            _microfonoOverride = _settings.MicrophoneName;
+                        }
+
+                        // Pausa sincronizada desde el administrador
+                        if (pingResult.EnPausa != _manualHold)
+                        {
+                            if (pingResult.EnPausa)
+                            {
+                                LogService.Info("Pausa remota detectada desde el servidor.");
+                                PauseManually();
+                            }
+                            else
+                            {
+                                LogService.Info("Reanudación remota detectada desde el servidor.");
+                                ResumeRemotely();
+                            }
+                        }
+
+                        if (changed)
+                        {
+                            _settingsService.Save(_settings);
+                            LogService.Info($"Sincronizado desde el servidor: Estado={_settings.EstadoOperativo}, CajeroId={_settings.CajeroId}, Cajero={_settings.Cajero}, Horarios, GrabacionHabilitada={_settings.GrabacionHabilitada}");
                         }
                     }
 
-                    // Pausa sincronizada desde el administrador
-                    if (pingResult.EnPausa != _manualHold)
-                    {
-                        if (pingResult.EnPausa)
-                        {
-                            LogService.Info("Pausa remota detectada desde el servidor.");
-                            PauseManually();
-                        }
-                        else
-                        {
-                            LogService.Info("Reanudación remota detectada desde el servidor.");
-                            ResumeRemotely();
-                        }
-                    }
-
-                    if (changed)
-                    {
-                        _settingsService.Save(_settings);
-                        LogService.Info($"Sincronizado desde el servidor: Estado={_settings.EstadoOperativo}, CajeroId={_settings.CajeroId}, Cajero={_settings.Cajero}, Horarios, GrabacionHabilitada={_settings.GrabacionHabilitada}");
-                    }
-
-                } catch(Exception px) {
-                    LogService.Warn("Ping falló: " + px.Message);
-                }
             }
         }
         catch (Exception ex)
@@ -232,9 +267,6 @@ public class AgentController
         if (_settings.EstadoOperativo == "En Mantenimiento" || _settings.EstadoOperativo == "Fuera de Servicio")
             return "apagado";
             
-        if (string.IsNullOrWhiteSpace(_settings.CajeroId))
-            return "apagado";
-
         var within = _scheduleService.IsWithinSchedule(_settings, GetEcuadorTime());
         if (!within)
             return "fuera de horario";
@@ -270,19 +302,18 @@ public class AgentController
         {
             _settings = SafeLoadSettings();
 
-            if (!_settings.GrabacionHabilitada || _settings.EstadoOperativo == "En Mantenimiento" || _settings.EstadoOperativo == "Fuera de Servicio" || string.IsNullOrWhiteSpace(_settings.CajeroId))
+            if (!_settings.GrabacionHabilitada || _settings.EstadoOperativo == "En Mantenimiento" || _settings.EstadoOperativo == "Fuera de Servicio")
             {
                 if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
                     await _recorder.StopAsync();
-
+                
                 if (!_settings.GrabacionHabilitada)
                     _indicator.SetPoweredOff();
                 else if (_settings.EstadoOperativo == "En Mantenimiento" || _settings.EstadoOperativo == "Fuera de Servicio")
                     _indicator.SetStopped(); // could set a specific state
-                else if (string.IsNullOrWhiteSpace(_settings.CajeroId))
-                    _indicator.SetStopped(); // Stop if no cashier is assigned
 
                 _segmentStart = null;
+                _tickBusy = false;
                 return;
             }
 
@@ -309,11 +340,12 @@ public class AgentController
             }
 
             // Rotación cada 10 min
-            if (_recorder.State == RecorderState.Recording && _segmentStart.HasValue)
+            else if (_recorder.State == RecorderState.Recording && _segmentStart.HasValue)
             {
-                if (GetEcuadorTime() - _segmentStart.Value >= _segmentDuration)
+                var duration = TimeSpan.FromMinutes(_settings.RecordingDurationMinutes > 0 ? _settings.RecordingDurationMinutes : 10);
+                if (GetEcuadorTime() - _segmentStart.Value >= duration)
                 {
-                    LogService.Info("Segment rotation triggered (10min).");
+                    LogService.Info($"Segment rotation triggered ({duration.TotalMinutes}min).");
                     await _recorder.StopAsync(); // OnSegmentClosed dispara UploadSegmentAsync
 
                     var fileNew = BuildFilePath();
@@ -516,6 +548,7 @@ public class AgentController
     public async void PauseManually()
     {
         _manualHold = true;
+        _enPausaOverride = true;
         _segmentStart = null;
         if (_recorder.State == RecorderState.Recording)
             await _recorder.PauseAsync();
@@ -525,12 +558,14 @@ public class AgentController
     public async void ResumeManually()
     {
         _manualHold = false;
+        _enPausaOverride = false;
         _settings = SafeLoadSettings();
         
         // Si el usuario presiona "Reanudar", implícitamente quiere habilitar la grabación de nuevo
         if (!_settings.GrabacionHabilitada)
         {
             _settings.GrabacionHabilitada = true;
+            _grabacionHabilitadaOverride = true;
             _settingsService.Save(_settings);
         }
 
@@ -563,6 +598,7 @@ public class AgentController
     public async void StopManually()
     {
         _manualHold = true;
+        _enPausaOverride = true;
         _segmentStart = null;
         if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
             await _recorder.StopAsync();
@@ -578,14 +614,40 @@ public class AgentController
         {
             _settings = SafeLoadSettings();
             _manualHold = false;
+            _microfonoOverride = _settings.MicrophoneName;
+            _duracionOverride = _settings.RecordingDurationMinutes;
+            _horariosOverride = new Dictionary<string, string>
+            {
+                { "turno_manana_inicio", _settings.TurnoMananaInicio.ToString(@"hh\:mm\:ss") },
+                { "turno_manana_fin", _settings.TurnoMananaFin.ToString(@"hh\:mm\:ss") },
+                { "turno_tarde_inicio", _settings.TurnoTardeInicio.ToString(@"hh\:mm\:ss") },
+                { "turno_tarde_fin", _settings.TurnoTardeFin.ToString(@"hh\:mm\:ss") }
+            };
+
+            // Forzar reinicio de grabación si aplica, SIN bloquear el hilo UI (evita deadlocks)
+            if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
+            {
+                Task.Run(async () => await _recorder.StopAsync());
+            }
+
             _ = TickAsync();
             LogService.Info("Settings updated via SettingsWindow.");
         }
     }
 
+    public void SetDuracionSegmentoOverride(int duracion)
+    {
+        _settings = SafeLoadSettings();
+        _settings.RecordingDurationMinutes = duracion;
+        _duracionOverride = duracion;
+        _settingsService.Save(_settings);
+        LogService.Info($"Duracion override set to {duracion} mins locally.");
+    }
+
     public async void PowerOffManually()
     {
         _manualHold = true;
+        _enPausaOverride = true;
         _segmentStart = null;
 
         if (_recorder.State == RecorderState.Recording || _recorder.State == RecorderState.Paused)
@@ -593,6 +655,7 @@ public class AgentController
 
         _settings = SafeLoadSettings();
         _settings.GrabacionHabilitada = false;
+        _grabacionHabilitadaOverride = false;
         _settingsService.Save(_settings);
 
         _indicator.SetPoweredOff();

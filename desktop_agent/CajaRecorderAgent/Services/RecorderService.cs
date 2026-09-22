@@ -1,4 +1,4 @@
-﻿using NAudio.Wave;
+using NAudio.Wave;
 using System;
 using System.IO;
 using System.Threading;
@@ -77,7 +77,8 @@ public class RecorderService
                 if (_writer == null) return;
 
                 _writer.Write(a.Buffer, 0, a.BytesRecorded);
-                _writer.Flush();
+                // ATENCIÓN: NUNCA hacer _writer.Flush() aquí adentro. 
+                // Hacer Flush a disco 5 veces por segundo bloquea el hilo de NAudio y causa micro-cortes de milisegundos en el audio.
             }
         }
         catch (Exception ex)
@@ -157,6 +158,7 @@ public class RecorderService
     public async Task StopAsync()
     {
         TaskCompletionSource<bool>? tcsToAwait = null;
+        WaveInEvent? waveToStop = null;
 
         lock (_sync)
         {
@@ -177,23 +179,31 @@ public class RecorderService
             {
                 _stopTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                 tcsToAwait = _stopTcs;
+                waveToStop = _waveIn;
+            }
+        }
 
-                try
+        // Llamar a StopRecording FUERA del lock y en un Hilo secundario para evitar Deadlock con OnRecordingStopped
+        if (waveToStop != null)
+        {
+            try
+            {
+                LogService.Info("StopAsync -> StopRecording() (Background thread)");
+                _ = Task.Run(() => waveToStop.StopRecording());
+            }
+            catch (Exception ex)
+            {
+                LogService.Error("StopRecording threw exception", ex);
+                lock (_sync)
                 {
-                    LogService.Info("StopAsync -> StopRecording()");
-                    _waveIn.StopRecording();
-                }
-                catch (Exception ex)
-                {
-                    LogService.Error("StopRecording threw exception", ex);
                     CleanupInternal();
                     if (State != RecorderState.Paused && State != RecorderState.Error)
                         State = RecorderState.Stopped;
                     OnStateChanged?.Invoke(State);
                     _stopTcs?.TrySetResult(true);
                     _stopTcs = null;
-                    return;
                 }
+                return;
             }
         }
 

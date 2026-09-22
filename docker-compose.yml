@@ -48,7 +48,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:v2-optimized
+    image: kevinagk/cajas_api:latest
     container_name: cajas_api
     env_file:
       - .env
@@ -83,7 +83,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:v2-optimized
+    image: kevinagk/cajas_api:latest
     env_file:
       - .env
     environment:
@@ -112,45 +112,45 @@ services:
           memory: 512M
     restart: unless-stopped
 
-  worker_enhance:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:v2-optimized
-    container_name: cajas_worker_enhance
-    env_file:
-      - .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
-      POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
-      DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
-      REDIS_URL: redis://redis:6379/0
-      STORAGE_ROOT: /app/storage
-      PYTHONUNBUFFERED: "1"
-    command: [ "python", "run_worker_enhance.py" ]
-    volumes:
-      - ./storage:/app/storage
-      - ./audios:/app/audios
-      - ./.env:/app/.env
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: "2.0"
-          memory: 1G
-    restart: unless-stopped
+  # worker_enhance:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.api
+  #   image: kevinagk/cajas_api:latest
+  #   container_name: cajas_worker_enhance
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-postgres}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456789}
+  #     POSTGRES_DB: ${POSTGRES_DB:-gestion_audios_cajas1}
+  #     DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+  #     DATABASE_URL_SYNC: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-123456789}@db:5432/${POSTGRES_DB:-gestion_audios_cajas1}
+  #     REDIS_URL: redis://redis:6379/0
+  #     STORAGE_ROOT: /app/storage
+  #     PYTHONUNBUFFERED: "1"
+  #   command: [ "python", "run_worker_enhance.py" ]
+  #   volumes:
+  #     - ./storage:/app/storage
+  #     - ./audios:/app/audios
+  #     - ./.env:/app/.env
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "2.0"
+  #         memory: 1G
+  #   restart: unless-stopped
 
   folder_ingest:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:v2-optimized
+    image: kevinagk/cajas_api:latest
     container_name: cajas_folder_ingest
     env_file:
       - .env
@@ -188,7 +188,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.whisperx
-    image: kevinagk/cajas_whisperx:v3-resource-limits
+    image: kevinagk/cajas_whisperx:v5
     env_file:
       - .env
     environment:
@@ -246,6 +246,7 @@ services:
       dockerfile: Dockerfile
     image: kevinagk/cajas_api_admin:latest
     container_name: cajas_api_admin
+    command: uvicorn main:app --host 0.0.0.0 --port 8000
     restart: unless-stopped
     ports:
       - "8001:8000"
@@ -264,3 +265,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
