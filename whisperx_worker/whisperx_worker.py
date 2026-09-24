@@ -201,10 +201,11 @@ def _get_models():
     }
 
     # ----- VAD OPTIONS -----
-    # Elevamos ligeramente el VAD_ONSET para no transcribir puro ruido
+    # Bajamos el umbral casi al mínimo para capturar toda la voz, incluso si hablan bajito.
+    # Como ya tenemos `temperature=0` y `initial_prompt=None`, no hay riesgo de alucinaciones.
     vad_options = {
-        "vad_onset": 0.400, # Subimos el umbral drásticamente para filtrar ruido de la ferretería
-        "vad_offset": 0.200,
+        "vad_onset": 0.010, # Capturar absolutamente toda la voz
+        "vad_offset": 0.010,
     }
 
     log.info("=" * 60)

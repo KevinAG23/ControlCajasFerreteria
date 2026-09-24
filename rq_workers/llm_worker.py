@@ -17,11 +17,13 @@ load_dotenv()
 DATABASE_URL = (os.getenv("DATABASE_URL_SYNC") or "").strip() or (os.getenv("DATABASE_URL") or "").strip()
 LLM_PROVIDER = (os.getenv("LLM_PROVIDER") or "groq").strip().lower()
 LLM_MODEL = (os.getenv("LLM_MODEL") or "llama-3.3-70b-versatile").strip()
-LLM_TIMEOUT_SEC = int(os.getenv("LLM_TIMEOUT_SEC") or "120")
+LLM_TIMEOUT_SEC = int(os.getenv("LLM_TIMEOUT_SEC") or "300")
+if LLM_TIMEOUT_SEC < 300:
+    LLM_TIMEOUT_SEC = 300
 
-GROQ_API_KEY = (os.getenv("GROQ_API_KEY") or os.getenv("GROK_API_KEY") or "").strip()
+GROQ_API_KEY_1 = (os.getenv("GROQ_API_KEY_1") or os.getenv("GROQ_API_KEY") or "").strip()
+GROQ_API_KEY_2 = (os.getenv("GROQ_API_KEY_2") or "").strip()
 OPENAI_API_KEY = (os.getenv("OPENAI_API_KEY") or "").strip()
-
 if not DATABASE_URL:
     raise RuntimeError("Falta DATABASE_URL_SYNC (recomendado) o DATABASE_URL en .env")
 
@@ -37,6 +39,30 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, futu
 def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
+def log_llm_cost(provider_key: str, input_chars: int, payload: Dict[str, Any]):
+    try:
+        costos_file = "/app/storage/costos.jsonl"
+        estimated_tokens = int(input_chars / 3.5)
+        # Cost: Groq is free, OpenAI is $0.15 / 1M input tokens
+        cost_per_million = 0.15 if "OPENAI" in provider_key.upper() else 0.0
+        costo_dolares = (estimated_tokens / 1000000.0) * cost_per_million
+        
+        # Try to extract an ID for context
+        ref_id = payload.get("grabacion_id") or payload.get("atencion_id") or "desconocido"
+        
+        record = {
+            "fecha": utcnow().isoformat(),
+            "referencia_id": str(ref_id),
+            "proveedor": provider_key,
+            "caracteres": input_chars,
+            "tokens_estimados": estimated_tokens,
+            "costo_usd": costo_dolares
+        }
+        os.makedirs(os.path.dirname(costos_file), exist_ok=True)
+        with open(costos_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except Exception as e:
+        print(f"[LLM Worker] Error logueando costo: {e}")
 
 
 # =========================
@@ -87,84 +113,105 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
     """
 
     system = (
-        "Eres un analista de calidad de servicio y atención al cliente. "
+        "Eres un analista experto en calidad de servicio al cliente. "
+        "Tu tarea es evaluar la transcripción de manera integral, comprendiendo el contexto, la intención y las variaciones naturales del lenguaje hablado. "
+        "NO es estrictamente necesario que el cajero use las palabras exactas, siempre y cuando el significado o la intención de la métrica se cumpla (por ejemplo, saludar, despedirse, etc.). "
+        "Sé justo y permisivo si el cumplimiento es evidente en el contexto de la conversación real. "
         "Devuelve SIEMPRE JSON estricto, sin texto extra."
     )
 
     lista_preguntas_str = "\n".join([
         f"- ID: {p['id']} | Pregunta: {p['texto_pregunta']}" + 
         (f" | Criterio: {p['instruccion_ia']}" if p.get('instruccion_ia') and p['instruccion_ia'] != "Evalúa si se cumple o no la condición. Responde únicamente con 'true' (Sí) o 'false' (No)." else "") +
+        (f" | EJEMPLO RESPUESTA ESPERADA: {p['ejemplo_respuesta_esperada']}" if p.get('ejemplo_respuesta_esperada') else "") +
         (f" | CONFIG RESPUESTA: {p['configuracion_respuesta']}" if p.get('configuracion_respuesta') and p['configuracion_respuesta'] != "{}" else "")
         for p in preguntas
     ])
 
     compact_format = (
         "{\n"
-        '  "resumen_ejecutivo": "Breve resumen de la interacción (máx. 2 frases).",\n'
+        '  "resumen_ejecutivo": "Breve resumen fáctico de la interacción (máx. 2 frases).",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
         '  "calificacion_general": 0 a 100,\n'
-        '  "actitudes": "Breve descripción de actitudes del agente y cliente (máx. 1 frase).",\n'
+        '  "actitudes": "Actitud detectada basada en las palabras usadas (máx. 1 frase).",\n'
         '  "evaluaciones": [\n'
         '    {\n'
         '      "pregunta_id": "ID de la pregunta",\n'
         '      "cumple": true | false,\n'
-        '      "justificacion_ia": "Cita textual justificativa súper corta (máx. 5 palabras) o \'No se observa\'." \n'
+        '      "justificacion_ia": "Cita textual exacta (máx. 10 palabras) o \'No se evidencia en la transcripción\'." \n'
         '    }\n'
         '  ]\n'
         "}"
     )
 
     user = (
-        "Evalúa rigurosamente el cumplimiento de estándares en la siguiente atención al cliente.\n"
-        "REGLAS DE EVALUACIÓN:\n"
-        "- REGLA DE ORO DE MÉTRICAS: Debes incluir OBLIGATORIAMENTE una evaluación para cada una de las preguntas de la lista en la sección 'PREGUNTAS' sin omitir ninguna. Si no hay evidencia en la transcripción para alguna pregunta, evalúala con 'cumple': false y 'justificacion_ia': 'No se observa'. El número total de elementos en la lista 'evaluaciones' debe ser EXACTAMENTE el mismo número de preguntas proporcionadas.\n"
-        "- Para cada ID de pregunta, evalúa estrictamente según su 'Criterio'. Si no se define criterio, asume que es una pregunta booleana de sí/no.\n"
-        "- 'cumple': true si cumple plenamente la condición; false si hay omisión, falla o no aplica.\n"
-        "- 'justificacion_ia': Cita súper corta (máx. 5 palabras) con marca de tiempo y hablante (ej: 'Cajero [14.5s]: Hola' o 'No se observa').\n"
-        "- 'calificacion_general': Porcentaje de cumplimiento de 0 a 100, calculado como: (cantidad de cumple=true / total evaluaciones) * 100.\n"
-        "- 'resumen_ejecutivo': Resumen conciso de la calidad de atención (máx. 2 frases).\n"
-        "- 'actitudes': Actitud y tono emocional del agente y cliente (máx. 1 frase).\n\n"
-        f"PREGUNTAS:\n{lista_preguntas_str}\n\n"
-        f"FORMATO JSON:\n{compact_format}\n\n"
-        f"INPUT:\n{json.dumps(payload, ensure_ascii=False)}"
+        "Evalúa el cumplimiento de las métricas en la siguiente transcripción.\n"
+        "REGLAS DE AUDITORÍA FLEXIBLE:\n"
+        "1. COMPRENSIÓN DEL CONTEXTO: Basa tu respuesta en el texto y su contexto natural. Las conversaciones reales son informales; acepta sinónimos, expresiones coloquiales o intenciones claras.\n"
+        "2. EXHAUSTIVIDAD: Debes incluir OBLIGATORIAMENTE una evaluación para cada una de las preguntas de la lista. El número de evaluaciones debe ser EXACTO al de preguntas.\n"
+        "3. PERMISIVO Y RAZONABLE: Para cada pregunta, evalúa según el 'Criterio', pero con flexibilidad. Si el cajero cumplió el propósito de la regla, evalúalo como 'true'.\n"
+        "4. IDENTIFICACIÓN DEL CAJERO: Las métricas aplican a las intervenciones del cajero. Usa el sentido común para diferenciar al cajero del cliente.\n"
+        "5. BOOLEANO: 'cumple': true si se cumple la intención o acción; false solo si hubo una omisión clara o fallo evidente.\n"
+        "6. JUSTIFICACIÓN: En 'justificacion_ia' provee una breve explicación o cita que demuestre el cumplimiento. Si 'cumple' es false, escribe 'No se evidenció la acción'.\n"
+        "7. 'calificacion_general': Porcentaje de cumplimiento de 0 a 100 ((cantidad de cumple=true / total evaluaciones) * 100).\n\n"
+        f"PREGUNTAS A EVALUAR:\n{lista_preguntas_str}\n\n"
+        f"FORMATO JSON REQUERIDO:\n{compact_format}\n\n"
+        f"TRANSCRIPCIÓN (INPUT):\n{json.dumps(payload, ensure_ascii=False)}"
     )
 
-    max_retries = 2
-    for attempt in range(1, max_retries + 1):
+    input_chars = len(system) + len(user)
+    estimated_tokens = int(input_chars / 3.5)
+    
+    fallbacks = []
+    if LLM_PROVIDER == "openai" and OPENAI_API_KEY:
+        fallbacks.append(("openai", OPENAI_API_KEY, "OPENAI_PRINCIPAL"))
+        if GROQ_API_KEY_1: fallbacks.append(("groq", GROQ_API_KEY_1, "GROQ_FALLBACK_1"))
+        if GROQ_API_KEY_2: fallbacks.append(("groq", GROQ_API_KEY_2, "GROQ_FALLBACK_2"))
+    else:
+        if GROQ_API_KEY_1: fallbacks.append(("groq", GROQ_API_KEY_1, "LLAVE 1"))
+        if GROQ_API_KEY_2: fallbacks.append(("groq", GROQ_API_KEY_2, "LLAVE 2"))
+        if OPENAI_API_KEY: fallbacks.append(("openai", OPENAI_API_KEY, "OPENAI SALVAVIDAS"))
+    
+    if not fallbacks:
+        raise RuntimeError("No hay ninguna llave configurada (ni Groq ni OpenAI).")
+
+    last_error = None
+    for provider, api_key, key_name in fallbacks:
         try:
-            if LLM_PROVIDER == "groq":
-                if not GROQ_API_KEY:
-                    raise RuntimeError("GROQ_API_KEY (o GROK_API_KEY) no está definido en .env")
+            if provider == "groq":
                 from groq import Groq
-                client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+                client = Groq(api_key=api_key, max_retries=0)
+                env_model = os.getenv("LLM_MODEL") or ""
+                groq_model = env_model if "llama" in env_model.lower() or "mixtral" in env_model.lower() or "gemma" in env_model.lower() else "llama-3.3-70b-versatile"
+                print(f"[LLM Call] Intentando GROQ ({key_name}) con modelo {groq_model} | Caracteres: {input_chars} | Tokens: ~{estimated_tokens}")
                 resp = client.chat.completions.create(
-                    model=LLM_MODEL or "llama-3.3-70b-versatile",
+                    model=groq_model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.2,
                 )
+                log_llm_cost(f"GROQ_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
-
-            if LLM_PROVIDER == "openai":
-                if not OPENAI_API_KEY:
-                    raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+                
+            elif provider == "openai":
                 from openai import OpenAI
-                client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+                client = OpenAI(api_key=api_key, max_retries=0)
+                openai_model = os.getenv("LLM_MODEL") or "gpt-4o-mini"
+                print(f"[LLM Call] Intentando OPENAI ({key_name}) con modelo {openai_model} | Caracteres: {input_chars} | Tokens: ~{estimated_tokens}")
                 resp = client.chat.completions.create(
-                    model=LLM_MODEL or "gpt-4o-mini",
+                    model=openai_model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.2,
                     timeout=LLM_TIMEOUT_SEC,
                     response_format={"type": "json_object"},
                 )
+                log_llm_cost(f"OPENAI_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
-
-            raise RuntimeError(f"LLM_PROVIDER no soportado: {LLM_PROVIDER}")
         except Exception as e:
-            if attempt == max_retries:
-                raise e
-            sleep_time = attempt * 3
-            print(f"[LLM Call] Error en intento {attempt}/{max_retries}: {e}. Reintentando en {sleep_time}s...")
-            time.sleep(sleep_time)
+            last_error = f"{type(e).__name__}: {str(e)}"
+            print(f"[LLM Call] Falló {provider} ({key_name}): {last_error}. Pasando al siguiente proveedor...")
+            time.sleep(1)
+            
+    raise RuntimeError(f"Todos los proveedores de LLM fallaron. Último error: {last_error}")
 
 def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
     system = (
@@ -175,17 +222,13 @@ def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
     compact_format = (
         "{\n"
         '  "cajero_speaker": "Identificador exacto de la persona que actúa como Cajero/Agente en la transcripción (ej: \'SPEAKER_00\' o \'SPEAKER_01\').",\n'
-        '  "resumen_general": "Resumen ejecutivo de toda la grabación de 10 minutos (máx. 2 frases).",\n'
+        '  "resumen_general": "Resumen ejecutivo de toda la grabación de 20 minutos (máx. 2 frases).",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
-        '  "roles_segmentos": {\n'
-        '    "1": "Cajero" | "Usuario",\n'
-        '    "2": "Cajero" | "Usuario"\n'
-        '  },\n'
         '  "atenciones": [\n'
         '    {\n'
         '      "estado": "COMPLETADA" | "EN_PROCESO",\n'
-        '      "inicio_segundo": número,\n'
-        '      "fin_segundo": número\n'
+        '      "inicio_segmento": número (ej: 1),\n'
+        '      "fin_segmento": número (ej: 42)\n'
         '    }\n'
         '  ]\n'
         "}"
@@ -193,66 +236,75 @@ def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     cajero_nombre = payload.get("cajero_nombre")
     user = (
-        "Analiza la transcripción de audio del cajero (duración aprox. 10 minutos) y sepárala en atenciones individuales (máx. 2).\n"
+        "Analiza la transcripción de audio del cajero (duración aprox. 20 minutos) y sepárala en atenciones individuales (múltiples atenciones).\n"
     )
     if cajero_nombre:
         user += f"CONTEXTO IMPORTANTE: El cajero que atiende se llama '{cajero_nombre}'. Utiliza esto para saber quién es el Cajero.\n"
     user += (
         "REGLAS DE SEGMENTACIÓN Y CONTINUACIÓN:\n"
-        "- Identifica qué etiqueta de hablante corresponde al Cajero (el que saluda, cobra y atiende, ej: 'SPEAKER_00' o 'SPEAKER_01') y devuélvelo en 'cajero_speaker'.\n"
+        "- Identifica qué etiqueta de hablante corresponde al Cajero (el que da la bienvenida, dice precios, cobra, ofrece productos o se despide) y devuélvelo en 'cajero_speaker'. Presta atención a quién lidera la transacción.\n"
         "- Una atención inicia con un saludo (ej: 'Buenos días', 'Hola', '¿Cómo está?') o cuando el cliente inicia una transacción.\n"
         "- Termina con una despedida (ej: 'Gracias', 'Que le vaya bien') o al finalizar el cobro (facturación, entrega de cambio/ticket).\n"
         "- IMPORTANTE: Si la grabación inicia con la continuación directa de una conversación anterior (marcada al principio del texto), unifícala en la misma primera atención en lugar de iniciar una nueva.\n"
-        "- Identifica de 0 a un MÁXIMO de 2 atenciones reales. No inventes atenciones si no existen en el texto.\n"
-        "- 'inicio_segundo' y 'fin_segundo' son los números decimales exactos del primer y último segmento de la atención.\n"
-        "- Si la última atención se corta abruptamente sin terminar, usa estado 'EN_PROCESO'. Si no, 'COMPLETADA'.\n"
-        "- DIARIZACIÓN SEMÁNTICA DETALLADA OBLIGATORIA:\n"
-        "  1. Para cada segmento numerado en el INPUT (ej: '1.', '2.', etc.), determina quién habla: 'Cajero' o 'Usuario'.\n"
-        "  2. Devuelve este mapeo en 'roles_segmentos' con el número de segmento como clave y su rol como valor ('Cajero' o 'Usuario').\n"
-        "  3. IMPORTANTE: Analiza semánticamente el texto de cada frase. El Cajero es quien ofrece productos, indica precios, cobra y saluda. El Usuario es el cliente que realiza pedidos, consulta precios o proporciona sus datos para facturar.\n"
-        "  4. Si todos los segmentos de la transcripción tienen la misma etiqueta (ej: 'SPEAKER_00' o 'UNKNOWN') debido a fallos del micrófono, debes guiarte únicamente por el sentido de la frase para separar quién es el Cajero y quién es el Usuario en el diálogo.\n"
-        "  5. Devuelve OBLIGATORIAMENTE la clave en 'roles_segmentos' para todos y cada uno de los números de segmento del INPUT sin omitir ninguno por pereza.\n\n"
-        f"FORMATO JSON:\n{compact_format}\n\n"
+        "- Identifica múltiples atenciones reales. No inventes atenciones si no existen en el texto.\n"
+        "- 'inicio_segmento' y 'fin_segmento' son los números enteros (índices) del primer y último segmento de la atención.\n"
+        "- Si la última atención se corta abruptamente sin terminar, usa estado 'EN_PROCESO'. Si no, 'COMPLETADA'.\n\n"
         f"INPUT:\n{json.dumps(payload, ensure_ascii=False)}"
     )
 
-    max_retries = 2
-    for attempt in range(1, max_retries + 1):
+    input_chars = len(system) + len(user)
+    estimated_tokens = int(input_chars / 3.5)
+    
+    fallbacks = []
+    if LLM_PROVIDER == "openai" and OPENAI_API_KEY:
+        fallbacks.append(("openai", OPENAI_API_KEY, "OPENAI_PRINCIPAL"))
+        if GROQ_API_KEY_1: fallbacks.append(("groq", GROQ_API_KEY_1, "GROQ_FALLBACK_1"))
+        if GROQ_API_KEY_2: fallbacks.append(("groq", GROQ_API_KEY_2, "GROQ_FALLBACK_2"))
+    else:
+        if GROQ_API_KEY_1: fallbacks.append(("groq", GROQ_API_KEY_1, "LLAVE 1"))
+        if GROQ_API_KEY_2: fallbacks.append(("groq", GROQ_API_KEY_2, "LLAVE 2"))
+        if OPENAI_API_KEY: fallbacks.append(("openai", OPENAI_API_KEY, "OPENAI SALVAVIDAS"))
+    
+    if not fallbacks:
+        raise RuntimeError("No hay ninguna llave configurada (ni Groq ni OpenAI).")
+
+    last_error = None
+    for provider, api_key, key_name in fallbacks:
         try:
-            if LLM_PROVIDER == "groq":
-                if not GROQ_API_KEY:
-                    raise RuntimeError("GROQ_API_KEY no está definido")
+            if provider == "groq":
                 from groq import Groq
-                client = Groq(api_key=GROQ_API_KEY, max_retries=0)
+                client = Groq(api_key=api_key, max_retries=0)
+                env_model = os.getenv("LLM_MODEL") or ""
+                groq_model = env_model if "llama" in env_model.lower() or "mixtral" in env_model.lower() or "gemma" in env_model.lower() else "llama-3.3-70b-versatile"
+                print(f"[LLM Extract] Intentando GROQ ({key_name}) con modelo {groq_model} | Caracteres: {input_chars} | Tokens: ~{estimated_tokens}")
                 resp = client.chat.completions.create(
-                    model=LLM_MODEL or "llama-3.3-70b-versatile",
+                    model=groq_model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.1,
-                    response_format={"type": "json_object"}
                 )
+                log_llm_cost(f"GROQ_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
-
-            if LLM_PROVIDER == "openai":
-                if not OPENAI_API_KEY:
-                    raise RuntimeError("OPENAI_API_KEY no está definido en .env")
+                
+            elif provider == "openai":
                 from openai import OpenAI
-                client = OpenAI(api_key=OPENAI_API_KEY, max_retries=0)
+                client = OpenAI(api_key=api_key, max_retries=0)
+                openai_model = os.getenv("LLM_MODEL") or "gpt-4o-mini"
+                print(f"[LLM Extract] Intentando OPENAI ({key_name}) con modelo {openai_model} | Caracteres: {input_chars} | Tokens: ~{estimated_tokens}")
                 resp = client.chat.completions.create(
-                    model=LLM_MODEL or "gpt-4o-mini",
+                    model=openai_model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.1,
                     timeout=LLM_TIMEOUT_SEC,
                     response_format={"type": "json_object"},
                 )
+                log_llm_cost(f"OPENAI_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
-
-            raise RuntimeError(f"LLM_PROVIDER no soportado para extract: {LLM_PROVIDER}")
         except Exception as e:
-            if attempt == max_retries:
-                raise e
-            sleep_time = attempt * 3
-            print(f"[LLM Extract] Error en intento {attempt}/{max_retries}: {e}. Reintentando en {sleep_time}s...")
-            time.sleep(sleep_time)
+            last_error = f"{type(e).__name__}: {str(e)}"
+            print(f"[LLM Extract] Falló {provider} ({key_name}): {last_error}. Pasando al siguiente proveedor...")
+            time.sleep(1)
+            
+    raise RuntimeError(f"Todos los proveedores de LLM fallaron. Último error: {last_error}")
 
 # =========================
 # JOB
@@ -267,6 +319,7 @@ def analyze_job(grabacion_id: str) -> Dict[str, Any]:
 def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
     t0 = time.perf_counter()
     import uuid
+    import re
     from rq import Queue
     from redis import Redis
 
@@ -310,7 +363,7 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
             {"tid": transcripcion_id}
         ).fetchall()
         
-        texto_con_tiempos = "\n".join([f"{i}. [{s[1]}s - {s[2]}s] {s[3] or 'UNKNOWN'}: {s[4]}" for i, s in enumerate(segments, start=1)])
+        texto_con_tiempos = "\n".join([f"{i}. {s[3] or 'UNKNOWN'}: {s[4]}" for i, s in enumerate(segments, start=1)])
 
         # Find if there is a recent EN_PROCESO atencion for this caja (within 25 minutes of the current recording start)
         open_atencion = None
@@ -400,62 +453,10 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
                     cajero_spk = None
         else:
             cajero_spk = None
+        # Se removió la inferencia automática de roles ('Cajero', 'Usuario') para preservar 
+        # directamente las etiquetas nativas 'SPEAKER_XX' de la diarización.
 
-        if cajero_spk:
-            db.execute(
-                text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante=:spk"),
-                {"tid": transcripcion_id, "spk": cajero_spk}
-            )
-            db.execute(
-                text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante!=:spk OR hablante IS NULL)"),
-                {"tid": transcripcion_id, "spk": cajero_spk}
-            )
-        else:
-            # Fallback si no se detecta cajero_speaker: SPEAKER_00 por defecto es Cajero
-            db.execute(
-                text("UPDATE public.segmentos_transcripcion SET rol_inferido='Cajero' WHERE transcripcion_id=CAST(:tid AS uuid) AND (hablante='SPEAKER_00' OR hablante IS NULL)"),
-                {"tid": transcripcion_id}
-            )
-            db.execute(
-                text("UPDATE public.segmentos_transcripcion SET rol_inferido='Usuario' WHERE transcripcion_id=CAST(:tid AS uuid) AND hablante!='SPEAKER_00' AND hablante IS NOT NULL"),
-                {"tid": transcripcion_id}
-            )
 
-        # 2) Sobrescribir con la diarización semántica detallada segmento por segmento del LLM (soporta string, list y dict)
-        roles_seg = out.get("roles_segmentos")
-        role_list = []
-        if isinstance(roles_seg, str) and roles_seg:
-            role_list = [r.strip().upper() for r in roles_seg.split(",") if r.strip()]
-        elif isinstance(roles_seg, list):
-            role_list = [str(r).strip().upper() for r in roles_seg]
-        elif isinstance(roles_seg, dict):
-            try:
-                import re
-                parsed_roles = {}
-                for k, v in roles_seg.items():
-                    match = re.search(r"\d+", str(k))
-                    if match:
-                        idx = int(match.group(0))
-                        parsed_roles[idx] = str(v).strip().upper()
-                
-                if parsed_roles:
-                    max_idx = max(parsed_roles.keys())
-                    role_list = [None] * max_idx
-                    for idx, val in parsed_roles.items():
-                        role_list[idx - 1] = val
-            except Exception as e:
-                log.warning("Error al parsear roles_segmentos dict: %s", e)
-
-        for idx, r_char in enumerate(role_list):
-            if r_char and idx < len(segments):
-                seg_id = segments[idx][0]
-                # 'C' o 'CAJERO' -> Cajero, 'U' o 'USUARIO' -> Usuario
-                val_role = "Cajero" if any(x in r_char for x in ["C", "CAJ"]) else "Usuario"
-                db.execute(
-                    text("UPDATE public.segmentos_transcripcion SET rol_inferido=:role WHERE id=CAST(:id AS uuid)"),
-                    {"role": val_role, "id": str(seg_id)}
-                )
-        
         # Save general summary row for the whole recording (atencion_id = NULL)
         resumen_gr = (out.get("resumen_general") or "").strip()
         sentimiento_gr = (out.get("sentimiento_general") or "NEUTRO").strip().upper()
@@ -483,16 +484,26 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
 
         for idx_aten, aten in enumerate(atenciones_list):
             estado = aten.get("estado", "COMPLETADA")
-            inicio = float(aten.get("inicio_segundo") or 0)
-            fin = float(aten.get("fin_segundo") or 0)
+            
+            idx_inicio = int(aten.get("inicio_segmento") or 1)
+            idx_fin = int(aten.get("fin_segmento") or len(segments))
+            
+            idx_inicio = max(1, min(idx_inicio, len(segments)))
+            idx_fin = max(1, min(idx_fin, len(segments)))
 
-            # Reconstruir texto_transcripcion a partir de los segmentos en ese rango de tiempo (tolerancia de 1.5 segundos)
+            inicio = float(segments[idx_inicio - 1][1]) if segments else 0.0
+            fin = float(segments[idx_fin - 1][2]) if segments else 0.0
+
             txt_segments = []
-            for s in segments:
-                s_ini = float(s[1])
-                s_fin = float(s[2])
-                if (s_ini >= inicio - 1.5) and (s_fin <= fin + 1.5):
-                    txt_segments.append(f"[{s[1]}s - {s[2]}s] {s[3] or 'UNKNOWN'}: {s[4]}")
+            for i in range(idx_inicio - 1, idx_fin):
+                if i < len(segments):
+                    s = segments[i]
+                    hablante_acustico = s[3]
+                    if cajero_spk:
+                        rol = "Cajero" if hablante_acustico == cajero_spk else "Usuario"
+                    else:
+                        rol = "Cajero" if hablante_acustico == 'SPEAKER_00' else "Usuario"
+                    txt_segments.append(f"[{s[1]}s - {s[2]}s] {rol}:{s[4]}")
             
             texto = "\n".join(txt_segments)
             if not texto.strip():
@@ -568,9 +579,9 @@ def evaluate_atencion_job(atencion_id: str) -> Dict[str, Any]:
         grabacion_id = row[1]
         
         # Cargar preguntas activas de catalogo_preguntas
-        rows_preg = db.execute(text("SELECT id::text, texto_pregunta, instruccion_ia, configuracion_respuesta FROM public.catalogo_preguntas WHERE activo=true")).fetchall()
+        rows_preg = db.execute(text("SELECT id::text, texto_pregunta, instruccion_ia, configuracion_respuesta, ejemplo_respuesta_esperada FROM public.catalogo_preguntas WHERE activo=true")).fetchall()
         preguntas = [
-            {"id": r[0], "texto_pregunta": r[1], "instruccion_ia": r[2], "configuracion_respuesta": r[3]} 
+            {"id": r[0], "texto_pregunta": r[1], "instruccion_ia": r[2], "configuracion_respuesta": r[3], "ejemplo_respuesta_esperada": r[4]} 
             for r in rows_preg
         ]
 
