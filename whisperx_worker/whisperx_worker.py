@@ -193,17 +193,18 @@ def _get_models():
         "beam_size": BEAM_SIZE,
         "condition_on_previous_text": False,  # FORZADO A FALSE: Evita repeticiones en silencios
         "suppress_numerals": SUPPRESS_NUM,
-        "initial_prompt": INITIAL_PROMPT if INITIAL_PROMPT else None,
+        "initial_prompt": None, # DESACTIVADO TOTALMENTE para evitar que se invente estas palabras
         "hotwords": ",".join(HOTWORDS) if HOTWORDS else None,
         "no_speech_threshold": 0.85, # Aumentado para rechazar ruido de fondo (def: 0.6)
-        "logprob_threshold": -1.0
+        "logprob_threshold": -1.0,
+        "temperature": 0.0 # OBLIGAR a no usar fallback. El fallback con temperatura alta inventa barbaridades
     }
 
     # ----- VAD OPTIONS -----
     # Elevamos ligeramente el VAD_ONSET para no transcribir puro ruido
     vad_options = {
-        "vad_onset": 0.200, 
-        "vad_offset": 0.050,
+        "vad_onset": 0.400, # Subimos el umbral drásticamente para filtrar ruido de la ferretería
+        "vad_offset": 0.200,
     }
 
     log.info("=" * 60)
