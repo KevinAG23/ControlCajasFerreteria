@@ -48,7 +48,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:latest
+    image: kevinagk/cajas_api:v4
     container_name: cajas_api
     env_file:
       - .env
@@ -83,7 +83,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:latest
+    image: kevinagk/cajas_api:v4
     env_file:
       - .env
     environment:
@@ -116,7 +116,7 @@ services:
   #   build:
   #     context: .
   #     dockerfile: Dockerfile.api
-  #   image: kevinagk/cajas_api:latest
+  #   image: kevinagk/cajas_api:v4
   #   container_name: cajas_worker_enhance
   #   env_file:
   #     - .env
@@ -150,7 +150,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    image: kevinagk/cajas_api:latest
+    image: kevinagk/cajas_api:v4
     container_name: cajas_folder_ingest
     env_file:
       - .env
@@ -188,7 +188,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.whisperx
-    image: kevinagk/cajas_whisperx:v5
+    image: kevinagk/cajas_whisperx:v7
     env_file:
       - .env
     environment:
