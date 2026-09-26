@@ -225,11 +225,22 @@ public class ApiClient
         return body; // si quieres, lo parseamos a DTO, pero para debug es suficiente
     }
 
-    public async Task<PingResult> PingAsync(string cajaId, bool isRecording, string estadoGrabacion, string[] listaMicrofonos = null)
+    public async Task<PingResult> PingAsync(string cajaId, bool isRecording, string estadoGrabacion, List<string> mics = null, bool? enPausaOverride = null, bool? grabacionHabilitadaOverride = null, string microfonoOverride = null, Dictionary<string, string> horariosOverride = null, int? duracionOverride = null)
     {
         ApplyAuth();
         
-        var payload = new { is_recording = isRecording, estado_grabacion = estadoGrabacion, lista_microfonos = listaMicrofonos };
+        var payload = new
+        {
+            is_recording = isRecording,
+            estado_grabacion = estadoGrabacion,
+            lista_microfonos = mics,
+            en_pausa_override = enPausaOverride,
+            grabacion_habilitada_override = grabacionHabilitadaOverride,
+            microfono_actual_override = microfonoOverride,
+            horarios_override = horariosOverride,
+            duracion_segmento_minutos_override = duracionOverride,
+            version = "v2.0.0"
+        };
         var json = JsonSerializer.Serialize(payload, _jsonOpts);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -287,4 +298,5 @@ public class PingResult
     public bool EnPausa { get; set; } = false;
     public int DuracionSegmentoMinutos { get; set; } = 10;
     public string MicrofonoAsignado { get; set; }
+    public bool RequireUpdate { get; set; } = false;
 }

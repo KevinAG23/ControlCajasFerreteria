@@ -191,21 +191,19 @@ def _get_models():
     # ----- ASR OPTIONS - Estándar 100% Nativo (sin filtros agresivos) -----
     asr_options = {
         "beam_size": BEAM_SIZE,
-        "condition_on_previous_text": False,  # FORZADO A FALSE: Evita repeticiones en silencios
+        "condition_on_previous_text": True,  # True para que mantenga el contexto y sea más preciso
         "suppress_numerals": SUPPRESS_NUM,
         "initial_prompt": None, # DESACTIVADO TOTALMENTE para evitar que se invente estas palabras
         "hotwords": ",".join(HOTWORDS) if HOTWORDS else None,
         "no_speech_threshold": 0.85, # Aumentado para rechazar ruido de fondo (def: 0.6)
-        "logprob_threshold": -1.0,
-        "temperature": 0.0 # OBLIGAR a no usar fallback. El fallback con temperatura alta inventa barbaridades
+        "log_prob_threshold": -1.0,
+        "temperatures": [0.0] # OBLIGAR a no usar fallback. El fallback con temperatura alta inventa barbaridades
     }
 
     # ----- VAD OPTIONS -----
-    # Bajamos el umbral casi al mínimo para capturar toda la voz, incluso si hablan bajito.
-    # Como ya tenemos `temperature=0` y `initial_prompt=None`, no hay riesgo de alucinaciones.
     vad_options = {
-        "vad_onset": 0.010, # Capturar absolutamente toda la voz
-        "vad_offset": 0.010,
+        "vad_onset": VAD_ONSET,
+        "vad_offset": VAD_OFFSET,
     }
 
     log.info("=" * 60)

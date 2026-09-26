@@ -12,6 +12,8 @@ class ContactoBase(BaseModel):
     email: Optional[str] = None
     direccion: Optional[str] = None
     rol: Optional[str] = None
+    rol_especifico: Optional[str] = None
+    sucursal_id: Optional[UUID] = None
 
 class ContactoCreate(ContactoBase):
     pass
@@ -20,6 +22,8 @@ class ContactoUpdate(ContactoBase):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     rol: Optional[str] = None
+    rol_especifico: Optional[str] = None
+    sucursal_id: Optional[UUID] = None
 
 class Contacto(ContactoBase):
     id: UUID
@@ -81,12 +85,17 @@ class CajaBase(BaseModel):
     motivo_estado: Optional[str] = None
     ultima_conexion: Optional[datetime] = None
     contacto_id: Optional[UUID] = None
+    sucursal_id: Optional[UUID] = None
     turno_manana_inicio: Optional[time] = None
     turno_manana_fin: Optional[time] = None
     turno_tarde_inicio: Optional[time] = None
     turno_tarde_fin: Optional[time] = None
     grabacion_habilitada: Optional[bool] = True
     en_pausa: Optional[bool] = False
+    microfono_asignado: Optional[str] = None
+    lista_microfonos: Optional[List[str]] = []
+    duracion_segmento_minutos: Optional[int] = 10
+    version_actual: Optional[str] = None
 
 class CajaCreate(CajaBase):
     pass
@@ -100,12 +109,17 @@ class CajaUpdate(BaseModel):
     motivo_estado: Optional[str] = None
     ultima_conexion: Optional[datetime] = None
     contacto_id: Optional[UUID] = None
+    sucursal_id: Optional[UUID] = None
     turno_manana_inicio: Optional[time] = None
     turno_manana_fin: Optional[time] = None
     turno_tarde_inicio: Optional[time] = None
     turno_tarde_fin: Optional[time] = None
     grabacion_habilitada: Optional[bool] = None
     en_pausa: Optional[bool] = None
+    microfono_asignado: Optional[str] = None
+    lista_microfonos: Optional[List[str]] = None
+    duracion_segmento_minutos: Optional[int] = None
+    version_actual: Optional[str] = None
 
 class Caja(CajaBase):
     id: UUID
@@ -130,6 +144,27 @@ class CategoriaPregunta(CategoriaPreguntaBase):
     class Config:
         from_attributes = True
 
+# ---- SUCURSALES ----
+class SucursalBase(BaseModel):
+    nombre: str
+    direccion: Optional[str] = None
+    activa: Optional[bool] = True
+
+class SucursalCreate(SucursalBase):
+    pass
+
+class SucursalUpdate(BaseModel):
+    nombre: Optional[str] = None
+    direccion: Optional[str] = None
+    activa: Optional[bool] = None
+
+class Sucursal(SucursalBase):
+    id: UUID
+    fecha_creacion: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
 # ---- CATALOGO PREGUNTAS ----
 class CatalogoPreguntaBase(BaseModel):
     texto_pregunta: str
@@ -139,6 +174,7 @@ class CatalogoPreguntaBase(BaseModel):
     tipo_respuesta: Optional[str] = "ESCALA_NUMERICA"
     configuracion_respuesta: Optional[Dict[str, Any]] = {}
     instruccion_ia: Optional[str] = None
+    ejemplo_respuesta_esperada: Optional[str] = None
 
 class CatalogoPreguntaCreate(CatalogoPreguntaBase):
     pass
@@ -151,6 +187,7 @@ class CatalogoPreguntaUpdate(BaseModel):
     tipo_respuesta: Optional[str] = None
     configuracion_respuesta: Optional[Dict[str, Any]] = None
     instruccion_ia: Optional[str] = None
+    ejemplo_respuesta_esperada: Optional[str] = None
 
 class CatalogoPregunta(CatalogoPreguntaBase):
     id: UUID

@@ -153,6 +153,12 @@ async def ingest_audio(
                 status_code=403,
                 detail=f"Caja inactiva: {caja_clean} (id={caja_row.id})"
             )
+            
+        if caja_row.version_actual not in ("v2.0.0", "v2.0.1"):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Se requiere instalar la versión v2.0.0 en esta caja para grabar."
+            )
 
         # ================= CAJERO =================
         cajero_clean = (cajero or "").strip()
@@ -254,18 +260,18 @@ async def ingest_audio(
         )
         await db.commit()
 
-        # ================= ENCOLAR JOB =================
+        # ================= ENCOLAR JOB DIRECTO A WHISPERX (BYPASS ENHANCE) =================
         try:
-            q_enhance.enqueue(
-                "rq_workers.enhance_worker.enhance_job",
+            q_whisperx = Queue("whisperx", connection=redis_conn)
+            q_whisperx.enqueue(
+                "whisperx_worker.whisperx_worker.transcribe_job",
                 str(grabacion_id),
-                str(incoming_path),
                 yyyymmdd,
-                job_id=str(grabacion_id),
+                job_id=f"whisperx_{grabacion_id}",
                 result_ttl=3600,
                 ttl=3600,
                 failure_ttl=86400,
-                job_timeout=600,
+                job_timeout=1800,
             )
 
             await db.execute(
@@ -273,7 +279,7 @@ async def ingest_audio(
                     "UPDATE public.grabaciones "
                     "SET estado_proceso=:st WHERE id=:id"
                 ),
-                {"st": "ENHANCE_QUEUED", "id": str(grabacion_id)}
+                {"st": "WHISPERX_QUEUED", "id": str(grabacion_id)}
             )
             await db.commit()
 

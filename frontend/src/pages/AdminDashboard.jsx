@@ -74,7 +74,8 @@ export default function AdminDashboard({ user }) {
                         en_pausa: b.en_pausa,
                         duracion_segmento_minutos: b.duracion_segmento_minutos,
                         microfono_asignado: b.microfono_asignado,
-                        lista_microfonos: b.lista_microfonos
+                        lista_microfonos: b.lista_microfonos,
+                        version_actual: b.version_actual
                     }));
                     
                     // Sort boxes by name alphabetically
@@ -480,7 +481,8 @@ export default function AdminDashboard({ user }) {
                 en_pausa: b.en_pausa,
                 duracion_segmento_minutos: b.duracion_segmento_minutos,
                 microfono_asignado: b.microfono_asignado,
-                lista_microfonos: b.lista_microfonos
+                lista_microfonos: b.lista_microfonos,
+                version_actual: b.version_actual
             }));
             
             // Sort boxes by name alphabetically
@@ -1269,7 +1271,7 @@ export default function AdminDashboard({ user }) {
                                             </div>
                                             <div className="recordings-list-body" style={{ display: 'flex', flexDirection: 'column' }}>
                                                 {boxConfigs.map((box) => {
-                                                    const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000;
+                                                    const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000 && box.version_actual === "v2.0.0";
                                                     return (
                                                     <div key={box.id} className="recording-row hover-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) minmax(180px, 1.5fr) minmax(200px, 2fr) 150px', gap: '1rem', padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', alignItems: 'center', transition: 'background-color 0.2s', backgroundColor: 'inherit' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1410,7 +1412,7 @@ export default function AdminDashboard({ user }) {
                                         </div>
                                         <div className="recordings-list-body" style={{ display: 'flex', flexDirection: 'column' }}>
                                             {boxConfigs.map((box) => {
-                                                const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000;
+                                                const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000 && box.version_actual === "v2.0.0";
                                                 const currentEstado = box.estado_operativo || 'Operativa';
                                                 const isRecording = currentEstado === "Operativa" ? (box.en_uso || false) : false;
                                                 return (
@@ -1423,10 +1425,21 @@ export default function AdminDashboard({ user }) {
                                                             )}
                                                         </div>
                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <span className="font-medium" style={{ fontSize: '1.05rem', color: '#1e293b' }}>{box.name}</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span className="font-medium" style={{ fontSize: '1.05rem', color: '#1e293b' }}>{box.name}</span>
+                                                                {box.version_actual && (
+                                                                    <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: '#e2e8f0', color: '#475569', fontWeight: 'bold' }}>
+                                                                        {box.version_actual}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <span style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.2rem' }}>{sucursales.find(s => s.id === box.sucursal_id)?.nombre || box.description || "Sin sucursal asignada"}</span>
-                                                            <span style={{ fontSize: '0.75rem', color: isRecording ? '#10b981' : isOnline ? '#ea580c' : '#94a3b8', fontWeight: '600' }}>
-                                                                {isRecording ? (box.assignedContactId ? 'Grabando / Transcribiendo' : 'Grabando / No Transcribiendo') : isOnline ? (box.estado_grabacion === 'pausa' ? 'En Pausa' : 'Transmisión Activa') : 'Fuera de Línea'}
+                                                            <span style={{ fontSize: '0.75rem', color: (isOnline && isRecording) ? '#10b981' : isOnline ? '#ea580c' : '#94a3b8', fontWeight: '600' }}>
+                                                                {isOnline 
+                                                                    ? (isRecording 
+                                                                        ? (box.assignedContactId ? 'Grabando / Transcribiendo' : 'Grabando / No Transcribiendo') 
+                                                                        : (box.estado_grabacion === 'pausa' ? 'En Pausa' : 'Transmisión Activa')) 
+                                                                    : 'Fuera de Línea'}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -1487,15 +1500,15 @@ export default function AdminDashboard({ user }) {
                                                                 pillColor = '#166534';
                                                                 pillBg = '#dcfce7';
                                                                 dotColor = '#22c55e';
-                                                                statusText = 'Grabando';
+                                                                statusText = 'Grabando / Transcribiendo';
                                                                 showPulse = true;
-                                                            } else if (grabacionEstado === 'pausa') {
+                                                            } else if (grabacionEstado === 'pausa' || grabacionEstado === 'en_pausa') {
                                                                 pillColor = '#9a3412';
                                                                 pillBg = '#ffedd5';
                                                                 dotColor = '#f97316';
-                                                                statusText = 'Pausa';
+                                                                statusText = 'En Pausa';
                                                                 showPulse = true;
-                                                            } else if (grabacionEstado === 'fuera de horario') {
+                                                            } else if (grabacionEstado === 'fuera de horario' || grabacionEstado === 'fuera_horario') {
                                                                 pillColor = '#475569';
                                                                 pillBg = '#f1f5f9';
                                                                 dotColor = '#64748b';
@@ -1506,18 +1519,11 @@ export default function AdminDashboard({ user }) {
                                                                 dotColor = '#3b82f6';
                                                                 statusText = 'Transmitiendo';
                                                                 showPulse = true;
-                                                            } else if (grabacionEstado === 'apagado') {
-                                                                if (box.grabacion_habilitada) {
-                                                                    pillColor = '#b45309';
-                                                                    pillBg = '#fef3c7';
-                                                                    dotColor = '#d97706';
-                                                                    statusText = 'Esperando...';
-                                                                } else {
-                                                                    pillColor = '#991b1b';
-                                                                    pillBg = '#fee2e2';
-                                                                    dotColor = '#ef4444';
-                                                                    statusText = 'Apagada';
-                                                                }
+                                                            } else {
+                                                                pillColor = '#991b1b';
+                                                                pillBg = '#fee2e2';
+                                                                dotColor = '#ef4444';
+                                                                statusText = 'Apagada';
                                                             }
 
                                                             return (
@@ -2417,7 +2423,8 @@ export default function AdminDashboard({ user }) {
                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos && transcriptionData[0].segmentos.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                     {transcriptionData[0].segmentos.map((segmento, idx) => {
-                                        const isCajero = segmento.rol_inferido === 'Cajero' || (segmento.rol_inferido !== 'Usuario' && segmento.hablante === 'SPEAKER_00');
+                                        const speakerName = segmento.hablante || 'SPEAKER_00';
+                                        const isSpeaker0 = speakerName.includes('00');
                                         return (
                                             <div key={idx} style={{
                                                 display: 'flex',
@@ -2431,13 +2438,13 @@ export default function AdminDashboard({ user }) {
                                                     [ {Number(segmento.inicio_segundo).toFixed(2).padStart(5, '0')} - {Number(segmento.fin_segundo).toFixed(2).padStart(5, '0')} ]
                                                 </span>
                                                 <span style={{
-                                                    color: isCajero ? '#0ea5e9' : '#f97316',
+                                                    color: isSpeaker0 ? '#0ea5e9' : '#f97316',
                                                     fontWeight: '700',
                                                     minWidth: '85px',
                                                     flexShrink: 0,
                                                     fontSize: '0.95rem'
                                                 }}>
-                                                    {isCajero ? 'Cajero:' : 'Usuario:'}
+                                                    {speakerName}:
                                                 </span>
                                                 <span style={{
                                                     color: '#334155',

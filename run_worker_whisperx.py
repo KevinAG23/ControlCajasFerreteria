@@ -30,5 +30,5 @@ if __name__ == "__main__":
     q = Queue("whisperx", connection=redis_conn)
 
     worker = worker_class([q], connection=redis_conn)
-    print(" Worker WHISPERX iniciado y escuchando...")
-    worker.work(with_scheduler=False)
+    print(" Worker WHISPERX iniciado y escuchando (MAX_JOBS=1)...")
+    worker.work(with_scheduler=False, max_jobs=1)

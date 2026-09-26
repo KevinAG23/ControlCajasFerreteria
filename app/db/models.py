@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, time
-from sqlalchemy import String, Boolean, Text, ForeignKey, DateTime, Time
+from sqlalchemy import String, Boolean, Text, ForeignKey, DateTime, Time, JSON, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.orm import relationship
@@ -50,3 +50,7 @@ class Caja(Base):
     turno_tarde_fin: Mapped[time | None] = mapped_column(Time, nullable=True)
     grabacion_habilitada: Mapped[bool] = mapped_column(Boolean, default=True)
     en_pausa: Mapped[bool] = mapped_column(Boolean, default=False)
+    microfono_asignado: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    lista_microfonos: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    duracion_segmento_minutos: Mapped[int] = mapped_column(Integer, default=10)
+    version_actual: Mapped[str | None] = mapped_column(String(50), nullable=True)

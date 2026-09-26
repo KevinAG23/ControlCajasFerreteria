@@ -10,11 +10,11 @@ none
 false
 TRACE;RELEASE;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\App.xaml
-51020038801
+6-884519668
 
-18275331854
+19-1117036157
 215-861095827
-MainWindow.xaml;Views\ControlWindow.xaml;Views\IndicatorWindow.xaml;Views\LoginWindow.xaml;Views\SettingsWindow.xaml;
+MainWindow.xaml;Views\ControlWindow.xaml;Views\IndicatorWindow.xaml;Views\LoginWindow.xaml;Views\SettingsWindow.xaml;Views\SuccessWindow.xaml;
 
 False
 

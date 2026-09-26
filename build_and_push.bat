@@ -27,14 +27,14 @@ docker push kevinagk/cajas_api_admin:latest
 
 echo.
 echo 3. Compilando y subiendo API Principal y Workers...
-docker build -t kevinagk/cajas_api:v2-optimized -f Dockerfile.api .
+docker build -t kevinagk/cajas_api:latest -f Dockerfile.api .
 if %ERRORLEVEL% neq 0 (
     echo.
     echo [ERROR] Error al compilar la API Principal.
     pause
     exit /b %ERRORLEVEL%
 )
-docker push kevinagk/cajas_api:v2-optimized
+docker push kevinagk/cajas_api:latest
 
 echo.
 echo 4. Compilando y subiendo WhisperX Worker...

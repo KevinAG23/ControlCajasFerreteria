@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CajaRecorderAgent")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec5d12c1bd19a0096ae8ed38910021baa50f55f0")]
 [assembly: System.Reflection.AssemblyProductAttribute("CajaRecorderAgent")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CajaRecorderAgent")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

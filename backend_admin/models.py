@@ -7,6 +7,18 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database import Base
 
+class Sucursal(Base):
+    __tablename__ = "sucursales"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nombre = Column(String(100), unique=True, nullable=False)
+    direccion = Column(Text, nullable=True)
+    activa = Column(Boolean, default=True)
+    fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
+    
+    contactos = relationship("Contacto", back_populates="sucursal")
+    cajas = relationship("Caja", back_populates="sucursal")
+
 class Rol(Base):
     __tablename__ = "roles"
 
@@ -26,10 +38,14 @@ class Contacto(Base):
     email = Column(String(100))
     direccion = Column(Text)
     rol = Column(String(50), nullable=True)
+    rol_especifico = Column(String(50), nullable=True)
+    sucursal_id = Column(UUID(as_uuid=True), ForeignKey("sucursales.id"), nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion = Column(DateTime(timezone=True), onupdate=func.now())
     creado_por_uid = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", use_alter=True, name="fk_contacto_creado_por"), nullable=True)
     actualizado_por_uid = Column(UUID(as_uuid=True), ForeignKey("usuarios.id", use_alter=True, name="fk_contacto_actualizado_por"), nullable=True)
+
+    sucursal = relationship("Sucursal", back_populates="contactos")
 
 class Usuario(Base):
     __tablename__ = "usuarios"
@@ -62,14 +78,20 @@ class Caja(Base):
     motivo_estado = Column(Text, nullable=True)
     ultima_conexion = Column(DateTime(timezone=True), nullable=True)
     contacto_id = Column(UUID(as_uuid=True), ForeignKey("contactos.id"), nullable=True)
+    sucursal_id = Column(UUID(as_uuid=True), ForeignKey("sucursales.id"), nullable=True)
     turno_manana_inicio = Column(Time, nullable=True)
     turno_manana_fin = Column(Time, nullable=True)
     turno_tarde_inicio = Column(Time, nullable=True)
     turno_tarde_fin = Column(Time, nullable=True)
     grabacion_habilitada = Column(Boolean, default=True)
     en_pausa = Column(Boolean, default=False)
+    microfono_asignado = Column(String(255), nullable=True)
+    lista_microfonos = Column(JSONB, default=[])
+    duracion_segmento_minutos = Column(Integer, default=10)
+    version_actual = Column(String(50), nullable=True)
 
     contacto = relationship("Contacto")
+    sucursal = relationship("Sucursal", back_populates="cajas")
     estado_buffer = relationship("EstadoBufferCaja", back_populates="caja", uselist=False)
     grabaciones = relationship("Grabacion", back_populates="caja")
 
@@ -78,6 +100,7 @@ class CategoriaPregunta(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     nombre = Column(String(50), unique=True, nullable=False)
+    activo = Column(Boolean, default=True)
     
     preguntas = relationship("CatalogoPreguntas", back_populates="categoria", cascade="all, delete-orphan")
 
