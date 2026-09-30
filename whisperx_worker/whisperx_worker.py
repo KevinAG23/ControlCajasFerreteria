@@ -525,13 +525,24 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             if len(text_clean) < 2:
                 continue
 
+            import re
+            
             # Filtro 1: Exact Match Hallucinations
             is_hallucination = False
-            text_nospace = text_lower.replace(".", "").replace(",", "").replace(" ", "").replace("!", "").replace("¡", "").replace("?", "").replace("¿", "")
-            for h in known_hallucinations:
-                h_clean = h.lower().replace(".", "").replace(",", "").replace(" ", "")
-                if len(h_clean) > 10:
-                    if (h_clean in text_nospace) or (len(text_nospace) > 15 and text_nospace in h_clean):
+            text_nospace = re.sub(r'[^a-záéíóúñ0-9]', '', text_lower)
+            
+            # Alucinaciones adicionales
+            extra_halls = [
+                "alimmenta",
+                "antarctica films",
+                "gracias por ver el video",
+                "gracias por ver el vídeo",
+            ]
+            
+            for h in known_hallucinations + extra_halls:
+                h_clean = re.sub(r'[^a-záéíóúñ0-9]', '', h.lower())
+                if len(h_clean) > 8:
+                    if (h_clean in text_nospace) or (len(text_nospace) > 10 and text_nospace in h_clean):
                         is_hallucination = True
                         break
             if is_hallucination:
