@@ -191,13 +191,13 @@ def _get_models():
     # ----- ASR OPTIONS - Estándar 100% Nativo (sin filtros agresivos) -----
     asr_options = {
         "beam_size": BEAM_SIZE,
-        "condition_on_previous_text": True,  # True para que mantenga el contexto y sea más preciso
+        "condition_on_previous_text": CONDITION_PREV,  # Usa la variable del entorno
         "suppress_numerals": SUPPRESS_NUM,
-        "initial_prompt": None, # DESACTIVADO TOTALMENTE para evitar que se invente estas palabras
+        "initial_prompt": None,
         "hotwords": ",".join(HOTWORDS) if HOTWORDS else None,
         "no_speech_threshold": 0.85, # Aumentado para rechazar ruido de fondo (def: 0.6)
         "log_prob_threshold": -1.0,
-        "temperatures": [0.0] # OBLIGAR a no usar fallback. El fallback con temperatura alta inventa barbaridades
+        "temperatures": [0.0]
     }
 
     # ----- VAD OPTIONS -----
@@ -515,37 +515,38 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
                 "son cinco dolares"
             ])
 
+        # FILTROS ANTI-ALUCINACION SEGUROS
         filtered_segments = []
-        prev_clean_text = None
-        
         for seg in base_result.get("segments", []):
             text_lower = seg["text"].lower().strip()
-            text_clean = text_lower.replace(".", "").replace(",", "").replace("!", "").replace("¿", "").replace("?", "").replace("¡", "")
+            text_clean = text_lower.replace(".", " ").replace(",", " ").replace("!", " ").replace("¡", " ").replace("?", " ").replace("¿", " ").replace("-", " ")
             words = text_clean.split()
             
+            if len(text_clean) < 2:
+                continue
+
+            # Filtro 1: Exact Match Hallucinations
             is_hallucination = False
+            text_nospace = text_lower.replace(".", "").replace(",", "").replace(" ", "").replace("!", "").replace("¡", "").replace("?", "").replace("¿", "")
             for h in known_hallucinations:
-                h_clean = h.lower().replace(".", "").replace(",", "")
-                # Solo borramos si el segmento contiene la alucinación, O si el segmento ES casi igual a la alucinación
-                # Para evitar borrar palabras sueltas, requerimos que el text_clean sea largo si vamos a usar "text_clean in h_clean"
+                h_clean = h.lower().replace(".", "").replace(",", "").replace(" ", "")
                 if len(h_clean) > 10:
-                    if (h_clean in text_clean) or (len(text_clean) > 15 and text_clean in h_clean):
+                    if (h_clean in text_nospace) or (len(text_nospace) > 15 and text_nospace in h_clean):
                         is_hallucination = True
                         break
-                        
             if is_hallucination:
                 log.warning(f"FILTRADO (Alucinacion de Prompt detectada): '{seg['text']}'")
                 continue
-                
-            # Filtro: Repetición intra-segmento (misma palabra muchas veces)
-            if len(words) >= 4:
+
+            # Filtro 2: Intra-segment loop (ej: cliente,cliente,cliente)
+            if len(words) >= 3:
                 counts = __import__('collections').Counter(words)
                 top_freq = counts.most_common(1)[0][1]
-                if top_freq >= 4 and (top_freq / len(words)) >= 0.5:
+                if top_freq >= 3 and (top_freq / len(words)) >= 0.5:
                     log.warning(f"FILTRADO (Repeticion palabra intra-segmento): '{seg['text']}'")
                     continue
                     
-            # Filtro: Repetición de secuencia (Ej: "A B C A B C" o "A B A B A B")
+            # Filtro 3: Secuencias repetidas
             n = len(words)
             if n >= 4 and n % 2 == 0 and words[:n//2] == words[n//2:]:
                 log.warning(f"FILTRADO (Secuencia repetida x2): '{seg['text']}'")
@@ -553,23 +554,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             if n >= 6 and n % 3 == 0 and words[:n//3] * 3 == words:
                 log.warning(f"FILTRADO (Secuencia repetida x3): '{seg['text']}'")
                 continue
-
-            # Filtro: Inter-segmento (repite el segmento anterior exacto)
-            if prev_clean_text and text_clean == prev_clean_text and len(words) <= 8:
-                log.warning(f"FILTRADO (Repeticion inter-segmento exacta): '{seg['text']}'")
-                continue
-                
-            # Filtro: Alucinación por silencio (pocas palabras, mucho tiempo)
-            seg_duration = seg.get("end", 0) - seg.get("start", 0)
-            if len(words) <= 6 and seg_duration > 6.0:
-                log.warning(f"FILTRADO (Muy pocas palabras {len(words)} en mucho tiempo {seg_duration:.1f}s): '{seg['text']}'")
-                continue
-            
-            # Ignorar si es extremadamente corto y solo ruido
-            if len(text_clean) < 2:
-                continue
-                
-            prev_clean_text = text_clean
+                    
             filtered_segments.append(seg)
             
         base_result["segments"] = filtered_segments
