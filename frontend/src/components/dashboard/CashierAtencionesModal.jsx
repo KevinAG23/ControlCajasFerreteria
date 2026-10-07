@@ -410,7 +410,7 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
                             <h3 style={{ margin: '0 0 0.35rem', color: '#431407', fontSize: '1.2rem', fontWeight: '800' }}>Calificación General</h3>
                             <p style={{
                                 margin: 0, color: '#7c6a5f', fontSize: '0.85rem', lineHeight: '1.45',
-                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+                                background: '#fdfbf9', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', whiteSpace: 'pre-line'
                             }} title={analysis.resumen_ejecutivo}>
                                 {analysis.resumen_ejecutivo || "Puntuación consolidada obtenida de los criterios obligatorios y adicionales evaluados por IA."}
                             </p>
@@ -929,7 +929,8 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                     texto: aten.texto_transcripcion,
                     sentimiento: aten.sentimiento_general,
                     calificacion: aten.calificacion_general,
-                    grabacionId: aten.grabacion_id
+                    grabacionId: aten.grabacion_id,
+                    rawDate: aten.fecha_hora_inicio ? new Date(aten.fecha_hora_inicio) : null
                 };
             }));
         } catch (err) { 
@@ -958,6 +959,8 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
         setLoadingAnalysis(false);
     };
 
+    const [periodFilter, setPeriodFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'WEEK' | 'MONTH'
+
     const filtered = atenciones.filter(a => {
         if (dateFilter && a.date !== dateFilter) return false;
         if (statusFilter !== 'ALL' && a.estado !== statusFilter) return false;
@@ -965,11 +968,21 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
             if (analysisFilter === 'ANALYZED' && !a.hasAnalysis) return false;
             if (analysisFilter === 'PENDING' && a.hasAnalysis) return false;
         }
+        if (periodFilter !== 'ALL') {
+            if (!a.rawDate) return true;
+            const now = new Date();
+            const diffDays = (now - a.rawDate) / (1000 * 60 * 60 * 24);
+            if (periodFilter === 'TODAY' && diffDays > 1) return false;
+            if (periodFilter === 'WEEK' && diffDays > 7) return false;
+            if (periodFilter === 'MONTH' && diffDays > 30) return false;
+        }
         return true;
     });
 
-    const completadas = atenciones.filter(a => a.estado === 'COMPLETADA').length;
-    const conAnalisis = atenciones.filter(a => a.hasAnalysis).length;
+    const completadas = filtered.filter(a => a.estado === 'COMPLETADA').length;
+    const conAnalisis = filtered.filter(a => a.hasAnalysis).length;
+    const scores = filtered.filter(a => a.calificacion !== null && a.calificacion !== undefined).map(a => a.calificacion);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((sum, v) => sum + v, 0) / scores.length) : null;
 
     if (!cashier) return null;
 
@@ -1049,8 +1062,10 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                     {/* Stats chips */}
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         {[
+                            { label: 'Atenciones', value: filtered.length, color: '#38bdf8' },
                             { label: 'Completadas', value: completadas, color: '#22c55e' },
                             { label: 'Con Análisis', value: conAnalisis, color: '#fb923c' },
+                            ...(avgScore !== null ? [{ label: 'Promedio', value: `${avgScore}/100`, color: '#eab308' }] : []),
                         ].map(s => (
                             <div key={s.label} style={{
                                 background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)',
@@ -1058,7 +1073,7 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                                 backdropFilter: 'blur(8px)',
                             }}>
                                 <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'white', lineHeight: 1 }}>{s.value}</div>
-                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.2rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.7)', marginTop: '0.2rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
                             </div>
                         ))}
                         <button onClick={onClose} style={{
@@ -1130,6 +1145,26 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                                 border: `1.5px solid ${analysisFilter === val ? '#ea580c' : '#e2e8f0'}`,
                                 background: analysisFilter === val ? '#ea580c' : 'white',
                                 color: analysisFilter === val ? 'white' : '#64748b',
+                            }}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ width: '1px', height: '20px', background: '#e2e8f0', flexShrink: 0 }} />
+
+                {/* Period filters (Día / Semana / Mes) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', marginRight: '0.2rem' }}>Periodo:</span>
+                    {[['ALL','Todo'],['TODAY','Hoy'],['WEEK','Semana'],['MONTH','Mes']].map(([val, label]) => (
+                        <button key={val} className={`filter-btn ${periodFilter === val ? 'active' : ''}`}
+                            onClick={() => setPeriodFilter(val)}
+                            style={{
+                                padding: '0.35rem 0.75rem', borderRadius: '10px', fontSize: '0.78rem',
+                                fontWeight: periodFilter === val ? '700' : '500', cursor: 'pointer',
+                                border: `1.5px solid ${periodFilter === val ? '#0284c7' : '#e2e8f0'}`,
+                                background: periodFilter === val ? '#0284c7' : 'white',
+                                color: periodFilter === val ? 'white' : '#64748b',
                             }}>
                             {label}
                         </button>
@@ -1323,3 +1358,4 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
         </div>
     );
 }
+

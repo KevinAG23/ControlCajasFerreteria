@@ -203,9 +203,8 @@ services:
       # ---- Límites de recursos GPU/CPU para PyTorch ----
       WHISPERX_VRAM_FRACTION: "0.35"
       WHISPERX_BATCH_SIZE: "8"
-      WHISPERX_MODEL_SIZE: "large-v2"
-      WHISPERX_VAD_ONSET: "0.050"
-      WHISPERX_VAD_OFFSET: "0.020"
+      WHISPERX_MODEL_SIZE: "large-v3-turbo"
+      
     command: [ "python", "run_worker_whisperx.py" ]
     volumes:
       - ./storage:/app/storage
@@ -268,4 +267,6 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+
 

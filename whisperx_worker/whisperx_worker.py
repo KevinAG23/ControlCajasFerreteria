@@ -1,9 +1,9 @@
 # whisperx_worker/whisperx_worker.py
 # ============================================================
-# Worker WhisperX — Transcripción + Diarización OPTIMIZADA
+# Worker WhisperX â€” TranscripciÃ³n + DiarizaciÃ³n OPTIMIZADA
 # Modelo: large-v3-turbo | RTX 3060 12 GB
 # ASR: beam_size=5, suppress_numerals, anti-hallucination
-# Diarización: pyannote/speaker-diarization-3.1 (estable)
+# DiarizaciÃ³n: pyannote/speaker-diarization-3.1 (estable)
 # ============================================================
 import gc
 import logging
@@ -29,7 +29,7 @@ os.environ.pop("CURL_CA_BUNDLE", None)
 # =========================
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s â€” %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("whisperx_worker")
@@ -48,8 +48,8 @@ BATCH_SIZE     = int(os.getenv("WHISPERX_BATCH_SIZE", "16"))
 MIN_SPEAKERS   = int(os.getenv("WHISPERX_MIN_SPEAKERS", "2"))
 MAX_SPEAKERS   = int(os.getenv("WHISPERX_MAX_SPEAKERS", "2"))
 
-# ASR Options — máxima precisión para call center español (objetivo ≥ 95%)
-# beam_size=10: exploración más amplia → menor WER (-5 a -10% vs beam=5)
+# ASR Options â€” mÃ¡xima precisiÃ³n para call center espaÃ±ol (objetivo â‰¥ 95%)
+# beam_size=10: exploraciÃ³n mÃ¡s amplia â†’ menor WER (-5 a -10% vs beam=5)
 # beam_size=5: menor tasa de alucinaciones
 BEAM_SIZE      = int(os.getenv("WHISPERX_BEAM_SIZE", "5"))
 CONDITION_PREV = os.getenv("WHISPERX_CONDITION_PREV", "false").strip().lower() == "true"
@@ -58,10 +58,10 @@ SUPPRESS_NUM   = os.getenv("WHISPERX_SUPPRESS_NUMERALS", "false").strip().lower(
 # initial_prompt: proporciona contexto de dominio al modelo SIN forzar texto
 INITIAL_PROMPT = os.getenv(
     "WHISPERX_INITIAL_PROMPT",
-    "Conversación en una caja entre cajero y cliente. Se mencionan productos, precios, pagos, efectivo, tarjeta, factura y cambio."
+    "ConversaciÃ³n en una caja entre cajero y cliente. Se mencionan productos, precios, pagos, efectivo, tarjeta, factura y cambio."
 ).strip()
 
-# El motor de beam search favorece estas palabras durante la decodificación
+# El motor de beam search favorece estas palabras durante la decodificaciÃ³n
 # -> Soluciona OOV (Out-Of-Vocabulary): nombres propios, siglas, marcas
 # Formato CSV en .env: WHISPERX_HOTWORDS=cajero,cliente,factura
 _hotwords_raw = os.getenv(
@@ -70,7 +70,7 @@ _hotwords_raw = os.getenv(
 ).strip()
 HOTWORDS: list[str] = [w.strip() for w in _hotwords_raw.split(",") if w.strip()] if _hotwords_raw else []
 
-# Diarización -> modelo configurable (pyannote 3.1 estable por defecto)
+# DiarizaciÃ³n -> modelo configurable (pyannote 3.1 estable por defecto)
 DIAR_MODEL     = os.getenv(
     "WHISPERX_DIAR_MODEL",
     "pyannote/speaker-diarization-3.1"
@@ -78,19 +78,19 @@ DIAR_MODEL     = os.getenv(
 
 # VAD Options - Configuraciones de Whisper y VAD
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v3")
-# Bajamos los umbrales de VAD casi al mínimo para que no elimine voces reales que suenan bajo o lejos
-VAD_ONSET = float(os.getenv("WHISPERX_VAD_ONSET", "0.050"))
-VAD_OFFSET = float(os.getenv("WHISPERX_VAD_OFFSET", "0.020"))
-INITIAL_PROMPT = os.getenv("WHISPERX_INITIAL_PROMPT", "Bienvenidos a la ferretería. Tenemos tubos de PVC, clavos, tornillos, pintura, cemento, alambre, pulgadas, pernos, lijas, brochas. ¿Desea factura con datos o consumidor final? Son cinco dólares. Muchas gracias, vuelva pronto.")
+# VAD hardcoded to prevent hallucinations from noise
+VAD_ONSET = 0.500
+VAD_OFFSET = 0.363
+INITIAL_PROMPT = os.getenv("WHISPERX_INITIAL_PROMPT", "Bienvenidos a la ferreterÃ­a. Tenemos tubos de PVC, clavos, tornillos, pintura, cemento, alambre, pulgadas, pernos, lijas, brochas. Â¿Desea factura con datos o consumidor final? Son cinco dÃ³lares. Muchas gracias, vuelva pronto.")
 
-# ---- LÍMITES DE RECURSOS (objetivo: máximo 70% de cada recurso) ----
+# ---- LÃMITES DE RECURSOS (objetivo: mÃ¡ximo 70% de cada recurso) ----
 VRAM_FRACTION  = float(os.getenv("WHISPERX_VRAM_FRACTION", "0.70"))
 CPU_THREADS    = int(os.getenv("WHISPERX_CPU_THREADS", "0"))  # 0 = auto (PyTorch decide)
 
 if not DB_URL:
     raise RuntimeError("Falta DATABASE_URL_SYNC en .env")
 if not HF_TOKEN or not HF_TOKEN.startswith("hf_"):
-    raise RuntimeError("HF_TOKEN inválido o no configurado en .env")
+    raise RuntimeError("HF_TOKEN invÃ¡lido o no configurado en .env")
 
 # Paths
 ENHANCED_DIR = STORAGE_ROOT / "enhanced"
@@ -109,11 +109,11 @@ try:
     _HAS_PSUTIL = True
 except ImportError:
     _HAS_PSUTIL = False
-    log.warning("psutil no disponible — monitoreo de CPU/RAM deshabilitado")
+    log.warning("psutil no disponible â€” monitoreo de CPU/RAM deshabilitado")
 
 
 # =========================
-# CACHE DE MODELOS (una sola carga por proceso RQ — ahorra 15-30s por job)
+# CACHE DE MODELOS (una sola carga por proceso RQ â€” ahorra 15-30s por job)
 # =========================
 _DEVICE: str | None          = None
 _COMPUTE_TYPE: str | None    = None
@@ -124,7 +124,7 @@ _DIAR_PIPELINE               = None   # pyannote diarization pipeline
 
 
 def _resolve_device() -> tuple[str, str]:
-    """Devuelve (device, compute_type) según hardware disponible."""
+    """Devuelve (device, compute_type) segÃºn hardware disponible."""
     device = "cuda" if (DEVICE_PREF == "cuda" and torch.cuda.is_available()) else "cpu"
     compute_type = "float16" if device == "cuda" else "float32"
     return device, compute_type
@@ -161,13 +161,13 @@ def _get_models():
     ASR se carga con asr_options optimizados para call center:
     - beam_size=5: balance calidad/velocidad
     - condition_on_previous_text=False: anti-hallucination
-    - suppress_numerals=True: mejor timestamp para números
-    - initial_prompt: contexto de call center en español
+    - suppress_numerals=True: mejor timestamp para nÃºmeros
+    - initial_prompt: contexto de call center en espaÃ±ol
     """
     global _DEVICE, _COMPUTE_TYPE, _ASR_MODEL, _ALIGN_MODEL, _ALIGN_META, _DIAR_PIPELINE
 
-    # Solo retornamos la caché si TODOS los modelos principales están cargados.
-    # Así evitamos devolver un `None` si un job anterior falló a la mitad de la carga (WindowsWorker no hace fork).
+    # Solo retornamos la cachÃ© si TODOS los modelos principales estÃ¡n cargados.
+    # AsÃ­ evitamos devolver un `None` si un job anterior fallÃ³ a la mitad de la carga (WindowsWorker no hace fork).
     if _ASR_MODEL is not None and _ALIGN_MODEL is not None and _DIAR_PIPELINE is not None:
         return _DEVICE, _COMPUTE_TYPE, _ASR_MODEL, _ALIGN_MODEL, _ALIGN_META, _DIAR_PIPELINE
 
@@ -175,29 +175,29 @@ def _get_models():
     _DEVICE       = device
     _COMPUTE_TYPE = compute_type
 
-    # ---- APLICAR LÍMITES DE RECURSOS ----
+    # ---- APLICAR LÃMITES DE RECURSOS ----
     if device == "cuda":
         torch.cuda.set_per_process_memory_fraction(VRAM_FRACTION, device=0)
         total_vram = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-        log.info("🔒 VRAM LIMITADA a %.0f%% — máximo %.1f GB de %.1f GB totales",
+        log.info("ðŸ”’ VRAM LIMITADA a %.0f%% â€” mÃ¡ximo %.1f GB de %.1f GB totales",
                  VRAM_FRACTION * 100, total_vram * VRAM_FRACTION, total_vram)
 
     if CPU_THREADS > 0:
         torch.set_num_threads(CPU_THREADS)
-        log.info("🔒 CPU THREADS limitado a %d hilos (PyTorch)", CPU_THREADS)
+        log.info("ðŸ”’ CPU THREADS limitado a %d hilos (PyTorch)", CPU_THREADS)
     else:
         log.info("CPU THREADS: auto (%d hilos detectados por PyTorch)", torch.get_num_threads())
 
-    # ----- ASR OPTIONS - Estándar 100% Nativo (sin filtros agresivos) -----
+    # ----- ASR OPTIONS - EstÃ¡ndar 100% Nativo (sin filtros agresivos) -----
     asr_options = {
         "beam_size": BEAM_SIZE,
         "condition_on_previous_text": CONDITION_PREV,  # Usa la variable del entorno
         "suppress_numerals": SUPPRESS_NUM,
-        "initial_prompt": None,
-        "hotwords": ",".join(HOTWORDS) if HOTWORDS else None,
-        "no_speech_threshold": 0.85, # Aumentado para rechazar ruido de fondo (def: 0.6)
+        "initial_prompt": INITIAL_PROMPT if INITIAL_PROMPT else None,
+        "hotwords": None,
+        "no_speech_threshold": 0.6,
         "log_prob_threshold": -1.0,
-        "temperatures": [0.0]
+        "temperatures": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     }
 
     # ----- VAD OPTIONS -----
@@ -207,19 +207,19 @@ def _get_models():
     }
 
     log.info("=" * 60)
-    log.info("Cargando modelos WhisperX - Configuración Estándar de Producción:")
+    log.info("Cargando modelos WhisperX - ConfiguraciÃ³n EstÃ¡ndar de ProducciÃ³n:")
     log.info("  ASR model:     %s", MODEL_SIZE)
     log.info("  Device:        %s | compute_type=%s", device, compute_type)
     log.info("  Batch size:    %d", BATCH_SIZE)
     log.info("  VAD onset:     %.3f | offset: %.3f", VAD_ONSET, VAD_OFFSET)
-    log.info("  Diarización:   %s", DIAR_MODEL)
+    log.info("  DiarizaciÃ³n:   %s", DIAR_MODEL)
     log.info("  Speakers:      min=%d max=%d", MIN_SPEAKERS, MAX_SPEAKERS)
     log.info("=" * 60)
 
     t0 = time.perf_counter()
 
-    # 1) ASR model (faster-whisper backend vía whisperx)
-    log.info("[1/3] Cargando ASR model (estándar)...")
+    # 1) ASR model (faster-whisper backend vÃ­a whisperx)
+    log.info("[1/3] Cargando ASR model (estÃ¡ndar)...")
     _ASR_MODEL = whisperx.load_model(
         MODEL_SIZE,
         device,
@@ -253,7 +253,7 @@ def _get_models():
         )
     except TypeError:
         # Fallback: versiones antiguas de whisperx no aceptan model_name
-        log.warning("model_name no soportado, cargando diarización por defecto (3.1)")
+        log.warning("model_name no soportado, cargando diarizaciÃ³n por defecto (3.1)")
         _DIAR_PIPELINE = whisperx.diarize.DiarizationPipeline(
             use_auth_token=HF_TOKEN,
             device=device,
@@ -270,10 +270,36 @@ def _get_models():
 # =========================
 def clean_transcription_segments(segments: list) -> list:
     """
-    Estándar 100% nativo: Retorna los segmentos intactos para no perder NADA 
-    del texto original devuelto por el modelo WhisperX.
+    Limpia repeticiones contiguas idénticas o casi idénticas, 
+    elimina segmentos con solo puntuación (ej: '.', '...', '..')
+    y normaliza el flujo para que no aparezcan frases duplicadas.
     """
-    return segments
+    if not segments:
+        return []
+    
+    import re
+    cleaned = []
+    prev_norm = ""
+    
+    for seg in segments:
+        raw_text = (seg.get("text") or "").strip()
+        # 1. Ignorar puntos, signos aislados o vacíos
+        if not raw_text or raw_text in [".", "..", "...", "-", "_", "!", "?"]:
+            continue
+            
+        norm = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]', '', raw_text.lower())
+        if len(norm) <= 1:
+            continue
+            
+        # 2. Ignorar si es idéntico al segmento previo (deduplicación contigua)
+        if norm == prev_norm:
+            log.warning(f"DEDUPLICADO (Segmento contiguo idéntico): '{raw_text}'")
+            continue
+            
+        cleaned.append(seg)
+        prev_norm = norm
+        
+    return cleaned
 
 
 def _utcnow():
@@ -340,7 +366,7 @@ def _db_save_whisper_metrics(conn, grabacion_id: str, metrics: dict) -> None:
     import json
     try:
         with conn.cursor() as cur:
-            # Obtener métricas existentes
+            # Obtener mÃ©tricas existentes
             cur.execute("SELECT metricas FROM public.grabaciones WHERE id = %s", (grabacion_id,))
             row = cur.fetchone()
             existing_metrics = {}
@@ -362,11 +388,11 @@ def _db_save_whisper_metrics(conn, grabacion_id: str, metrics: dict) -> None:
                 (json.dumps(existing_metrics), grabacion_id)
             )
     except Exception as e:
-        log.warning(f"Error al guardar métricas de Whisper en DB: {e}")
+        log.warning(f"Error al guardar mÃ©tricas de Whisper en DB: {e}")
 
 
 def _vram_free():
-    """Libera caché de CUDA sin eliminar los modelos de memoria."""
+    """Libera cachÃ© de CUDA sin eliminar los modelos de memoria."""
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
         gc.collect()
@@ -378,13 +404,13 @@ def _vram_free():
 def transcribe_job(grabacion_id: str, yyyymmdd: str):
     """
     Job RQ (cola whisperx):
-      1. Carga modelos (desde caché si ya están en memoria)
+      1. Carga modelos (desde cachÃ© si ya estÃ¡n en memoria)
       2. Transcribe con WhisperX large-v3-turbo (batch_size=16, beam=10, hotwords)
-      3. Alínea a nivel de palabra
+      3. AlÃ­nea a nivel de palabra
       4. Diariza con pyannote/speaker-diarization-3.1
       5. Asigna speaker a cada segmento (whisperx.assign_word_speakers nativo)
-      6. Guarda transcripción + segmentos en BD
-      7. Encola job de análisis LLM
+      6. Guarda transcripciÃ³n + segmentos en BD
+      7. Encola job de anÃ¡lisis LLM
     """
     t_total = time.perf_counter()
     log.info("=" * 60)
@@ -395,11 +421,11 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
     _log_system_resources("INICIO-JOB")
 
     # Priorizar el audio MEJORADO (enhanced) para transcribir y diarizar
-    # ya que contiene reducción de ruido avanzada y volumen de voz normalizado,
-    # cayendo al audio original (incoming) si no está disponible.
+    # ya que contiene reducciÃ³n de ruido avanzada y volumen de voz normalizado,
+    # cayendo al audio original (incoming) si no estÃ¡ disponible.
     audio_path = _enhanced_path(grabacion_id, yyyymmdd)
     if audio_path and audio_path.exists():
-        log.info("Cargando audio MEJORADO (Enhanced) para transcripción: %s", audio_path.name)
+        log.info("Cargando audio MEJORADO (Enhanced) para transcripciÃ³n: %s", audio_path.name)
     else:
         log.warning("Audio MEJORADO no encontrado en '%s'. Aplicando fallback a audio ORIGINAL sin mejorar!", audio_path)
         audio_path = None
@@ -413,7 +439,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
     if not audio_path or not audio_path.exists():
         raise FileNotFoundError(f"No existe el archivo de audio para procesar (grabacion_id={grabacion_id})")
 
-    log.info("Audio para ASR/Diarización: %s (%.1f MB)", audio_path.name,
+    log.info("Audio para ASR/DiarizaciÃ³n: %s (%.1f MB)", audio_path.name,
              audio_path.stat().st_size / (1024 * 1024))
 
     # Obtener modelos (cargados 1 sola vez por proceso)
@@ -427,7 +453,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         conn.commit()
 
         # ----------------------------------------------------------
-        # PASO 1: Transcripción ASR
+        # PASO 1: TranscripciÃ³n ASR
         # ----------------------------------------------------------
         log.info("[1/4] Transcribiendo con %s (batch=%d, beam=%d, hotwords=%d)...",
                  MODEL_SIZE, BATCH_SIZE, BEAM_SIZE, len(HOTWORDS))
@@ -435,15 +461,15 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
 
         audio = whisperx.load_audio(str(audio_path))
         audio_duration_sec = len(audio) / 16000.0
-        log.info("  Audio de ASR (ENH) cargado: %.1f s de duración", audio_duration_sec)
+        log.info("  Audio de ASR (ENH) cargado: %.1f s de duraciÃ³n", audio_duration_sec)
 
-        # Cargar audio de diarización (DIAR) si existe para Pyannote
+        # Cargar audio de diarizaciÃ³n (DIAR) si existe para Pyannote
         diar_audio_path = str(audio_path).replace("_ENH.wav", "_DIAR.wav")
         if os.path.exists(diar_audio_path):
-            log.info("  Cargando audio optimizado para diarización desde %s", diar_audio_path)
+            log.info("  Cargando audio optimizado para diarizaciÃ³n desde %s", diar_audio_path)
             diar_audio = whisperx.load_audio(diar_audio_path)
         else:
-            log.warning("  No se encontró audio de diarización (%s), usando audio de ASR...", diar_audio_path)
+            log.warning("  No se encontrÃ³ audio de diarizaciÃ³n (%s), usando audio de ASR...", diar_audio_path)
             diar_audio = audio
 
         transcribe_kwargs = dict(
@@ -461,7 +487,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             base_result = asr_model.transcribe(audio, **transcribe_kwargs)
         except TypeError as e:
             if "hotwords" in str(e):
-                log.warning("WhisperX no acepta 'hotwords' en transcribe(), omitiéndolo...")
+                log.warning("WhisperX no acepta 'hotwords' en transcribe(), omitiÃ©ndolo...")
                 transcribe_kwargs.pop("hotwords", None)
                 base_result = asr_model.transcribe(audio, **transcribe_kwargs)
             else:
@@ -473,18 +499,18 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         # WhisperX a menudo alucina frases de Youtube o repite el prompt inicial en silencios.
         known_hallucinations = [
             "gracias por ver el video",
-            "gracias por ver el vídeo",
-            "atención al cliente en caja",
+            "gracias por ver el vÃ­deo",
+            "atenciÃ³n al cliente en caja",
             "atencion al cliente en caja",
-            "subtítulos realizados",
+            "subtÃ­tulos realizados",
             "subtitulos realizados",
             "amara.org",
-            "suscríbete",
+            "suscrÃ­bete",
             "suscribete",
-            "gracias por su atención",
+            "gracias por su atenciÃ³n",
             "gracias por su atencion",
             "gracias por su compania",
-            "música música",
+            "mÃºsica mÃºsica",
             "musica musica",
             "ok bien si chao",
             "bien si chao",
@@ -492,20 +518,20 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             "pulgadas medidas precios",
             "el cajero realiza la venta",
             "conversacion de atencion al cliente",
-            "conversación de atención al cliente",
-            "subtítulos por la comunidad de amara.org",
-            "subtítulos por",
-            "suscríbete al canal",
+            "conversaciÃ³n de atenciÃ³n al cliente",
+            "subtÃ­tulos por la comunidad de amara.org",
+            "subtÃ­tulos por",
+            "suscrÃ­bete al canal",
             "www.cdc.gov",
             "cdc.gov",
-            "más información"
+            "mÃ¡s informaciÃ³n"
         ]
         
         if INITIAL_PROMPT:
-            # Añadir sub-frases clave del prompt para atrapar alucinaciones variadas
+            # AÃ±adir sub-frases clave del prompt para atrapar alucinaciones variadas
             known_hallucinations.extend([
                 "el cajero realiza la venta de",
-                "la venta de artículos como",
+                "la venta de artÃ­culos como",
                 "se mencionan pulgadas, medidas",
                 "precios y facturas",
                 "bienvenidos a la ferreteria",
@@ -517,9 +543,12 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
 
         # FILTROS ANTI-ALUCINACION SEGUROS
         filtered_segments = []
+        prev_text_nospace = ""
+        prev_text_count = 0
+        
         for seg in base_result.get("segments", []):
-            text_lower = seg["text"].lower().strip()
-            text_clean = text_lower.replace(".", " ").replace(",", " ").replace("!", " ").replace("¡", " ").replace("?", " ").replace("¿", " ").replace("-", " ")
+            text_lower = seg['text'].lower().strip()
+            text_clean = text_lower.replace(".", " ").replace(",", " ").replace("!", " ").replace("Â¿", " ").replace("?", " ").replace("Â¡", " ").replace("-", " ")
             words = text_clean.split()
             
             if len(text_clean) < 2:
@@ -529,27 +558,65 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             
             # Filtro 1: Exact Match Hallucinations
             is_hallucination = False
-            text_nospace = re.sub(r'[^a-záéíóúñ0-9]', '', text_lower)
+            text_nospace = re.sub(r'[^a-zÃ¡Ã©Ã­Ã³ÃºÃ±0-9]', '', text_lower)
             
-            # Alucinaciones adicionales
+            # Cross-segment repeticion (Ej: "Â¿CÃ³mo se llama?" dicho en 10 segmentos seguidos porque es ruido)
+            if text_nospace == prev_text_nospace and len(text_nospace) > 3:
+                prev_text_count += 1
+                if prev_text_count >= 2: # Si se repite mÃ¡s de 2 veces seguidas
+                    log.warning(f"FILTRADO (Cross-segment repetition): '{seg['text']}'")
+                    continue
+            else:
+                prev_text_nospace = text_nospace
+                prev_text_count = 0
+            
+            # Alucinaciones adicionales y heurÃ­sticas
             extra_halls = [
                 "alimmenta",
                 "antarctica films",
                 "gracias por ver el video",
-                "gracias por ver el vídeo",
+                "gracias por ver el vÃ­deo",
+                "y muchos mÃ¡s",
+                "y mÃ¡s",
+                "este es el centro de la ciudad de mÃ©xico",
+                "ciudad de mÃ©xico",
+                "alambre para maravilla",
+                "paseo de la compaÃ±Ã­a nacional del trabajo",
+                "en el centro de la ciudad se encuentra el centro comercial de la ciudad",
+                "y servicios de salud",
+                "iglesia de jesucristo de los santos de los Ãºltimos dÃ­as",
+                "en este video vamos a visitar",
+                "bienvenidos a nuestro canal",
+                "bienvenidos a un nuevo video",
+                "este video estÃ¡ realizado por la comunidad de amara.org",
+                "saludos a todos los que nos han visitado en este video",
+                "suscrÃ­bete",
+                "suscribete",
+                "gracias",
+                "no no",
+                "bueno bueno",
+                "quiÃ©n es de 25 centavos",
+                "yo creo que aquÃ­ es la"
             ]
             
             for h in known_hallucinations + extra_halls:
-                h_clean = re.sub(r'[^a-záéíóúñ0-9]', '', h.lower())
-                if len(h_clean) > 8:
+                h_clean = re.sub(r'[^a-zÃ¡Ã©Ã­Ã³ÃºÃ±0-9]', '', h.lower())
+                if len(h_clean) > 5:
                     if (h_clean in text_nospace) or (len(text_nospace) > 10 and text_nospace in h_clean):
                         is_hallucination = True
                         break
+            
             if is_hallucination:
                 log.warning(f"FILTRADO (Alucinacion de Prompt detectada): '{seg['text']}'")
                 continue
 
-            # Filtro 2: Intra-segment loop (ej: cliente,cliente,cliente)
+            # Filtro 2: Intra-segment loop usando regex
+            import re
+            # Busca cualquier frase de 5+ caracteres que se repita al menos 3 veces seguidas
+            if re.search(r'(.{5,}?)(?:\s*\1){3,}', seg['text'], flags=re.IGNORECASE):
+                log.warning(f"FILTRADO (Bucle Regex intra-segmento): '{seg['text']}'")
+                continue
+
             if len(words) >= 3:
                 counts = __import__('collections').Counter(words)
                 top_freq = counts.most_common(1)[0][1]
@@ -565,7 +632,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             if n >= 6 and n % 3 == 0 and words[:n//3] * 3 == words:
                 log.warning(f"FILTRADO (Secuencia repetida x3): '{seg['text']}'")
                 continue
-                    
+                
             filtered_segments.append(seg)
             
         base_result["segments"] = filtered_segments
@@ -575,7 +642,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         t1_elapsed = time.perf_counter() - t1
         rtf_asr = t1_elapsed / max(audio_duration_sec, 0.1)
 
-        log.info("[1/4] Transcripción OK — %d segmentos | %.1f s | RTF=%.2fx",
+        log.info("[1/4] TranscripciÃ³n OK â€” %d segmentos | %.1f s | RTF=%.2fx",
                  n_segments_raw, t1_elapsed, rtf_asr)
         _log_vram("post-transcribe")
 
@@ -601,7 +668,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             len(s.get("words", [])) for s in aligned_result.get("segments", [])
         )
         t2_elapsed = time.perf_counter() - t2
-        log.info("[2/4] Alignment OK — %d palabras alineadas | %.1f s", n_words, t2_elapsed)
+        log.info("[2/4] Alignment OK â€” %d palabras alineadas | %.1f s", n_words, t2_elapsed)
 
         _log_vram("post-align")
         _vram_free()
@@ -622,13 +689,13 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         )
 
         t3_elapsed = time.perf_counter() - t3
-        log.info("[3/4] Diarización OK | %.1f s", t3_elapsed)
+        log.info("[3/4] DiarizaciÃ³n OK | %.1f s", t3_elapsed)
 
         _log_vram("post-diarize")
         _vram_free()
 
         # ----------------------------------------------------------
-        # PASO 4: Asignación de speakers (nativo WhisperX + Diarization Fallback)
+        # PASO 4: AsignaciÃ³n de speakers (nativo WhisperX + Diarization Fallback)
         # ----------------------------------------------------------
         log.info("[4/4] Asignando speakers a segmentos...")
         t4 = time.perf_counter()
@@ -636,8 +703,8 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         result_with_speakers = whisperx.assign_word_speakers(diarization, aligned_result)
         segments = result_with_speakers.get("segments", [])
 
-        # Algoritmo de interpolación y solapamiento temporal de Pyannote:
-        # Asegura que el 100% de los segmentos tengan speaker asignado (incluso con habla rápida)
+        # Algoritmo de interpolaciÃ³n y solapamiento temporal de Pyannote:
+        # Asegura que el 100% de los segmentos tengan speaker asignado (incluso con habla rÃ¡pida)
         last_speaker = None
         last_segment_end = 0.0
         for seg in segments:
@@ -682,7 +749,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         # Contar speakers detectados
         speakers_detectados = {s.get("speaker") for s in segments if s.get("speaker")}
 
-        # Contar distribución por speaker y número de turnos
+        # Contar distribuciÃ³n por speaker y nÃºmero de turnos
         speaker_stats = {}
         turn_counts = {}
         for s in segments:
@@ -691,7 +758,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             speaker_stats[spk] = speaker_stats.get(spk, 0.0) + dur
             turn_counts[spk] = turn_counts.get(spk, 0) + 1
 
-        # Algoritmo Acústico de Identificación del Cajero por Volumen Físico (RMS) y Actividad
+        # Algoritmo AcÃºstico de IdentificaciÃ³n del Cajero por Volumen FÃ­sico (RMS) y Actividad
         import numpy as np
         speaker_rms = {}
         speaker_samples = {}
@@ -699,7 +766,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             if spk and spk != "UNKNOWN":
                 speaker_samples[spk] = []
 
-        # Recolectamos las muestras del audio de diarización correspondientes a cada hablante
+        # Recolectamos las muestras del audio de diarizaciÃ³n correspondientes a cada hablante
         for s in segments:
             spk = s.get("speaker")
             if spk and spk in speaker_samples:
@@ -719,7 +786,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             else:
                 speaker_rms[spk] = 0.0
 
-        # Calificación combinada del Cajero (Loudness 85%, Duración 10%, Turnos 5%)
+        # CalificaciÃ³n combinada del Cajero (Loudness 85%, DuraciÃ³n 10%, Turnos 5%)
         max_rms = max(speaker_rms.values()) if speaker_rms else 1.0
         max_dur = max(speaker_stats.values()) if speaker_stats else 1.0
         max_turns = max(turn_counts.values()) if turn_counts else 1.0
@@ -735,12 +802,12 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             
             score = 0.85 * norm_rms + 0.10 * norm_dur + 0.05 * norm_turns
             speaker_scores[spk] = score
-            log.info("Speaker %s puntuación acústica: RMS=%.6f (norm=%.2f), Dur=%.1fs (norm=%.2f), Turnos=%d (norm=%.2f) -> Score=%.3f",
+            log.info("Speaker %s puntuaciÃ³n acÃºstica: RMS=%.6f (norm=%.2f), Dur=%.1fs (norm=%.2f), Turnos=%d (norm=%.2f) -> Score=%.3f",
                      spk, speaker_rms.get(spk, 0.0), norm_rms, speaker_stats.get(spk, 0.0), norm_dur, turn_counts.get(spk, 0), norm_turns, score)
 
         if speaker_scores:
             cajero_spk = max(speaker_scores, key=speaker_scores.get)
-        log.info(">>> Hablante acústicamente identificado como CAJERO: %s (Score: %.3f)", cajero_spk, speaker_scores.get(cajero_spk, 0.0))
+        log.info(">>> Hablante acÃºsticamente identificado como CAJERO: %s (Score: %.3f)", cajero_spk, speaker_scores.get(cajero_spk, 0.0))
 
         t4_elapsed = time.perf_counter() - t4
         log.info("[4/4] Speakers detectados: %s | %.1f s",
@@ -748,7 +815,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
 
         for spk, dur in sorted(speaker_stats.items()):
             pct = (dur / max(audio_duration_sec, 0.1)) * 100
-            log.info("  → %s: %.1f s (%.0f%%) | turnos: %d", spk, dur, pct, turn_counts.get(spk, 0))
+            log.info("  â†’ %s: %.1f s (%.0f%%) | turnos: %d", spk, dur, pct, turn_counts.get(spk, 0))
 
         # ----------------------------------------------------------
         # Guardar en BD
@@ -760,7 +827,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         trans_id = _insert_transcripcion(conn, grabacion_id, texto_completo)
         _insert_segmentos(conn, trans_id, segments)
         
-        # Calcular y guardar métricas de WhisperX y Diarización
+        # Calcular y guardar mÃ©tricas de WhisperX y DiarizaciÃ³n
         try:
             conf_scores = [w.get("score") for s in segments for w in s.get("words", []) if w.get("score") is not None]
             avg_confidence = sum(conf_scores) / len(conf_scores) if conf_scores else 0.0
@@ -777,7 +844,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             
             t_total_elapsed = round(time.perf_counter() - t_total, 2)
             
-            # Estadísticas por speaker
+            # EstadÃ­sticas por speaker
             speaker_pcts = {}
             duracion_media_turno = {}
             for spk, dur in speaker_stats.items():
@@ -805,18 +872,18 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
                 "speaker_stats_mean_turn": duracion_media_turno
             }
             _db_save_whisper_metrics(conn, grabacion_id, whisper_metrics)
-            log.info("Métricas de WhisperX guardadas en base de datos para grabacion_id=%s", grabacion_id)
+            log.info("MÃ©tricas de WhisperX guardadas en base de datos para grabacion_id=%s", grabacion_id)
         except Exception as e_wm:
-            log.warning("No se pudieron guardar las métricas de WhisperX: %s", e_wm)
+            log.warning("No se pudieron guardar las mÃ©tricas de WhisperX: %s", e_wm)
 
         _set_estado(conn, grabacion_id, "TRANSCRIBED")
         conn.commit()
 
-        log.info("Transcripción guardada en BD | trans_id=%s | caracteres=%d | palabras≈%d",
+        log.info("TranscripciÃ³n guardada en BD | trans_id=%s | caracteres=%d | palabrasâ‰ˆ%d",
                  trans_id, len(texto_completo), len(texto_completo.split()))
 
         # ----------------------------------------------------------
-        # Encolar análisis LLM
+        # Encolar anÃ¡lisis LLM
         # ----------------------------------------------------------
         try:
             redis_conn = Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
@@ -829,10 +896,10 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
                 ttl=3600,
                 failure_ttl=86400,
             )
-            log.info("Job de análisis encolado correctamente.")
+            log.info("Job de anÃ¡lisis encolado correctamente.")
         except Exception:
             import traceback
-            log.warning("No se pudo encolar job de análisis (no crítico):\n%s",
+            log.warning("No se pudo encolar job de anÃ¡lisis (no crÃ­tico):\n%s",
                         traceback.format_exc())
 
         t_total_elapsed = round(time.perf_counter() - t_total, 2)
@@ -892,7 +959,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
         log.info("Ejecutando limpieza forzada de memoria (GC + VRAM)...")
         import gc
         import torch
-        # Limpiamos recolección de basura de Python
+        # Limpiamos recolecciÃ³n de basura de Python
         gc.collect()
         # Vaciamos VRAM para evitar Out of Memory y Segmentation Faults (SIGKILL 139)
         if torch.cuda.is_available():

@@ -130,7 +130,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
 
     compact_format = (
         "{\n"
-        '  "resumen_ejecutivo": "Breve resumen fáctico de la interacción (máx. 2 frases).",\n'
+        '  "resumen_ejecutivo": "Analiza cómo abordó la venta, cordialidad, palabras indebidas, tono (máx 3 frases).",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
         '  "calificacion_general": 0 a 100,\n'
         '  "actitudes": "Actitud detectada basada en las palabras usadas (máx. 1 frase).",\n'
@@ -138,7 +138,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
         '    {\n'
         '      "pregunta_id": "ID de la pregunta",\n'
         '      "cumple": true | false,\n'
-        '      "justificacion_ia": "Cita textual exacta (máx. 10 palabras) o \'No se evidencia en la transcripción\'." \n'
+        '      "justificacion_ia": "Justificación muy breve (Máx 5 palabras)."\n'
         '    }\n'
         '  ]\n'
         "}"
@@ -152,7 +152,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
         "3. PERMISIVO Y RAZONABLE: Para cada pregunta, evalúa según el 'Criterio', pero con flexibilidad. Si el cajero cumplió el propósito de la regla, evalúalo como 'true'.\n"
         "4. IDENTIFICACIÓN DEL CAJERO: Las métricas aplican a las intervenciones del cajero. Usa el sentido común para diferenciar al cajero del cliente.\n"
         "5. BOOLEANO: 'cumple': true si se cumple la intención o acción; false solo si hubo una omisión clara o fallo evidente.\n"
-        "6. JUSTIFICACIÓN: En 'justificacion_ia' provee una breve explicación o cita que demuestre el cumplimiento. Si 'cumple' es false, escribe 'No se evidenció la acción'.\n"
+        "6. JUSTIFICACIÓN: En 'justificacion_ia' provee una breve explicacion o cita que demuestre el cumplimiento. Si 'cumple' es false, escribe 'No se evidencio la accion'.\n"
         "7. 'calificacion_general': Porcentaje de cumplimiento de 0 a 100 ((cantidad de cumple=true / total evaluaciones) * 100).\n\n"
         f"PREGUNTAS A EVALUAR:\n{lista_preguntas_str}\n\n"
         f"FORMATO JSON REQUERIDO:\n{compact_format}\n\n"
@@ -247,6 +247,7 @@ def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
         "- Termina con una despedida (ej: 'Gracias', 'Que le vaya bien') o al finalizar el cobro (facturación, entrega de cambio/ticket).\n"
         "- IMPORTANTE: Si la grabación inicia con la continuación directa de una conversación anterior (marcada al principio del texto), unifícala en la misma primera atención en lugar de iniciar una nueva.\n"
         "- Identifica múltiples atenciones reales. No inventes atenciones si no existen en el texto.\n"
+        "- IMPORTANTE: Cada atención debe ser una interacción comercial real de al menos 15-20 segundos con intercambio sustancial entre cajero y cliente. NUNCA crees atenciones de 2 a 10 segundos por una simple frase suelta o ruido aislado.\n"
         "- 'inicio_segmento' y 'fin_segmento' son los números enteros (índices) del primer y último segmento de la atención.\n"
         "- Si la última atención se corta abruptamente sin terminar, usa estado 'EN_PROCESO'. Si no, 'COMPLETADA'.\n\n"
         f"INPUT:\n{json.dumps(payload, ensure_ascii=False)}"
@@ -521,6 +522,11 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
             # Calculamos la fecha real de inicio y la duracion
             real_inicio = base_fecha_hora_inicio + timedelta(seconds=inicio) if base_fecha_hora_inicio else None
             duracion = max(0, int(fin - inicio))
+            
+            # FILTRO ANTI-FANTASMAS: Si dura menos de 15 segundos y tiene menos de 2 turnos, es ruido/saludo aislado
+            if duracion < 15 and len(txt_segments) < 2:
+                print(f"[LLM Worker] Omitiendo micro-atención espuria de {duracion}s ('{texto[:40]}...')")
+                continue
             
             new_id = str(uuid.uuid4())
             db.execute(

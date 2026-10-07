@@ -260,14 +260,17 @@ async def ingest_audio(
         )
         await db.commit()
 
-        # ================= ENCOLAR JOB DIRECTO A WHISPERX (BYPASS ENHANCE) =================
+        # ================= ENCOLAR JOB A ENHANCE =================
         try:
-            q_whisperx = Queue("whisperx", connection=redis_conn)
-            q_whisperx.enqueue(
-                "whisperx_worker.whisperx_worker.transcribe_job",
+            from rq import Queue
+            q_enhance = Queue("enhance", connection=redis_conn)
+            incoming_path = f"/app/storage/incoming/{yyyymmdd}/{grabacion_id}.wav"
+            q_enhance.enqueue(
+                "rq_workers.enhance_worker.enhance_job",
                 str(grabacion_id),
+                incoming_path,
                 yyyymmdd,
-                job_id=f"whisperx_{grabacion_id}",
+                job_id=str(grabacion_id),
                 result_ttl=3600,
                 ttl=3600,
                 failure_ttl=86400,
@@ -279,7 +282,7 @@ async def ingest_audio(
                     "UPDATE public.grabaciones "
                     "SET estado_proceso=:st WHERE id=:id"
                 ),
-                {"st": "WHISPERX_QUEUED", "id": str(grabacion_id)}
+                {"st": "ENHANCE_QUEUED", "id": str(grabacion_id)}
             )
             await db.commit()
 
