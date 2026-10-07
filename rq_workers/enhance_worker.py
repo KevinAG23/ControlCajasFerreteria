@@ -298,23 +298,19 @@ def enhance_single_pass(input_file: str, out_wav: str) -> float:
         ]
     else:
         # 1. Filtros de entrada pasa-alto y pasa-bajo de voz humana
-        hp = max(70, HIGHPASS_HZ)
-        lp = min(7500, LOWPASS_HZ)
+        hp = max(60, HIGHPASS_HZ)
+        lp = min(7800, LOWPASS_HZ)
         filter_list = [
             f"highpass=f={hp}",
             f"lowpass=f={lp}",
         ]
-        
-        # 2. Puerta de ruido suave (agate) para suprimir estática y ruido de fondo en silencios
-        # Umbral -42dB con ataque rápido (10ms) y decaimiento natural (250ms)
-        filter_list.append("agate=threshold=-42dB:ratio=2.5:attack=10:release=250")
 
-        # 3. Denoise inteligente respetando .env si está activo
+        # 2. Denoise inteligente respetando .env si está activo
         denoise_mode = os.getenv("ENH_DENOISE_MODE", "afftdn").strip().lower()
         if denoise_mode == "afftdn":
             filter_list.append(f"afftdn=nr={AFFTDN_NR}:nf={AFFTDN_NF}")
         
-        # 4. Normalización estándar broadcast para audibilidad clara sin saturación
+        # 3. Normalización estándar broadcast para audibilidad clara sin saturación
         filter_list.append(f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}")
         
         af = ",".join(filter_list)

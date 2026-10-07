@@ -78,9 +78,8 @@ DIAR_MODEL     = os.getenv(
 
 # VAD Options - Configuraciones de Whisper y VAD
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v3")
-# VAD: Si en el .env está un onset muy bajo como 0.050 (que capta puro ruido de motos), aplicamos mínimo 0.500 seguro
-_env_vad_onset = float(os.getenv("WHISPERX_VAD_ONSET", "0.500"))
-VAD_ONSET = max(0.450, _env_vad_onset) if _env_vad_onset < 0.200 else _env_vad_onset
+# VAD: Lee directamente la variable del entorno (por defecto 0.050 / 0.150 para máxima sensibilidad y captura de voz)
+VAD_ONSET = float(os.getenv("WHISPERX_VAD_ONSET", "0.050"))
 VAD_OFFSET = float(os.getenv("WHISPERX_VAD_OFFSET", "0.363"))
 INITIAL_PROMPT = os.getenv("WHISPERX_INITIAL_PROMPT", "Bienvenidos a la ferretería. Tenemos tubos de PVC, clavos, tornillos, pintura, cemento, alambre, pulgadas, pernos, lijas, brochas. ¿Desea factura con datos o consumidor final? Son cinco dólares. Muchas gracias, vuelva pronto.")
 
@@ -196,7 +195,7 @@ def _get_models():
         "suppress_numerals": SUPPRESS_NUM,
         "initial_prompt": INITIAL_PROMPT if INITIAL_PROMPT else None,
         "hotwords": None,
-        "no_speech_threshold": 0.70,
+        "no_speech_threshold": 0.60,
         "log_prob_threshold": -1.0,
         "temperatures": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     }
