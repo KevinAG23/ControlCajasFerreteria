@@ -1,4 +1,4 @@
-﻿import os
+import os
 import subprocess
 import time
 import logging
@@ -240,12 +240,13 @@ def _db_save_enhance_metrics(grabacion_id: str, metrics: dict) -> None:
 
 def diarization_single_pass(input_file: str, out_wav: str) -> float:
     """
-    Genera una versiÃ³n de audio con ecualizaciÃ³n mÃ­nima para preservar los formantes y
-    caracterÃ­sticas del habla original necesarias para Pyannote Diarization.
+    Genera una versión de audio con ecualización mínima para preservar los formantes y
+    características del habla original necesarias para Pyannote Diarization.
     """
     t0 = time.perf_counter()
-    if True: # ENH_BYPASS FORZADO A TRUE
-        log.info("ENH_BYPASS activo: omitiendo filtros de diarizaciÃ³n y convirtiendo directo.")
+    bypass = os.getenv("ENH_BYPASS", "false").strip().lower() == "true"
+    if bypass:
+        log.info("ENH_BYPASS activo: omitiendo filtros de diarización y convirtiendo directo.")
         cmd = [
             FFMPEG, "-y",
             "-i", input_file,
@@ -254,10 +255,11 @@ def diarization_single_pass(input_file: str, out_wav: str) -> float:
             out_wav
         ]
     else:
-        # Solo paso alto para eliminar frecuencias subgraves y loudnorm suave
+        # Pasa-alto suave para eliminar sub-graves de motores y ruido de mesa
         filter_list = [
-            "highpass=f=90",
-            "loudnorm=I=-22:LRA=10:TP=-2"
+            f"highpass=f={max(80, HIGHPASS_HZ)}",
+            f"lowpass=f={min(7500, LOWPASS_HZ)}",
+            f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}"
         ]
         af = ",".join(filter_list)
         cmd = [
@@ -270,18 +272,22 @@ def diarization_single_pass(input_file: str, out_wav: str) -> float:
         ]
     p = _run(cmd)
     if p.returncode != 0:
-        raise RuntimeError(f"ffmpeg diarization pass fallÃ³:\n{p.stderr}")
+        raise RuntimeError(f"ffmpeg diarization pass falló:\n{p.stderr}")
     return time.perf_counter() - t0
 
 
 def enhance_single_pass(input_file: str, out_wav: str) -> float:
     """
-    Convierte y mejora el audio usando filtros avanzados de FFmpeg en una sola pasada.
-    Elimina silenceremove para mantener consistencia de timestamps de cara a WhisperX/Pyannote.
+    Convierte y aísla las voces humanas usando filtros de FFmpeg limpios:
+    - Bandpass vocal (elimina vibración de motos/motores <80Hz y siseos >7000Hz).
+    - Agate suave para silenciar ruidos lejanos cuando nadie habla.
+    - Denoise suave configurable desde .env.
+    - Normalización equilibrada sin ecualizaciones artificiales que hagan la voz aguda.
     """
     t0 = time.perf_counter()
+    bypass = os.getenv("ENH_BYPASS", "false").strip().lower() == "true"
 
-    if True: # ENH_BYPASS FORZADO A TRUE
+    if bypass:
         log.info("ENH_BYPASS activo: omitiendo filtros de enhance y convirtiendo directo.")
         cmd = [
             FFMPEG, "-y",
@@ -291,18 +297,25 @@ def enhance_single_pass(input_file: str, out_wav: str) -> float:
             out_wav
         ]
     else:
-        # 1. Filtros de entrada paso alto/bajo
+        # 1. Filtros de entrada pasa-alto y pasa-bajo de voz humana
+        hp = max(70, HIGHPASS_HZ)
+        lp = min(7500, LOWPASS_HZ)
         filter_list = [
-            f"highpass=f={HIGHPASS_HZ}",
-            f"lowpass=f={LOWPASS_HZ}",
+            f"highpass=f={hp}",
+            f"lowpass=f={lp}",
         ]
         
-        # 2. Denoise suave
-        filter_list.append("afftdn=nr=12:nf=-38")
+        # 2. Puerta de ruido suave (agate) para suprimir estática y ruido de fondo en silencios
+        # Umbral -42dB con ataque rápido (10ms) y decaimiento natural (250ms)
+        filter_list.append("agate=threshold=-42dB:ratio=2.5:attack=10:release=250")
+
+        # 3. Denoise inteligente respetando .env si está activo
+        denoise_mode = os.getenv("ENH_DENOISE_MODE", "afftdn").strip().lower()
+        if denoise_mode == "afftdn":
+            filter_list.append(f"afftdn=nr={AFFTDN_NR}:nf={AFFTDN_NF}")
         
-        # 3. Normalización inteligente y limitador (sin ecualización agresiva para no hacer la voz aguda)
-        # Esto levanta el volumen de las voces bajas sin distorsionar.
-        filter_list.append("loudnorm=I=-16:LRA=11:TP=-1.5")
+        # 4. Normalización estándar broadcast para audibilidad clara sin saturación
+        filter_list.append(f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}")
         
         af = ",".join(filter_list)
 
@@ -317,7 +330,7 @@ def enhance_single_pass(input_file: str, out_wav: str) -> float:
     
     p_enh = _run(cmd)
     if p_enh.returncode != 0:
-        raise RuntimeError(f"ffmpeg filtrado fallÃ³:\n{p_enh.stderr}")
+        raise RuntimeError(f"ffmpeg filtrado falló:\n{p_enh.stderr}")
 
     elapsed = time.perf_counter() - t0
     return elapsed
