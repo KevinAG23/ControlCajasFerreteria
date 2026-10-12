@@ -1,96 +1,88 @@
 // src/api/metrics.js
+import axios from 'axios';
+import { getToken } from './auth';
+
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8001";
 
-const getHeaders = () => {
-    const token = localStorage.getItem('token');
+const getAuthHeaders = () => {
+    const token = getToken() || localStorage.getItem('token');
     return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
     };
 };
 
 export async function getCategories() {
-    const res = await fetch(`${API_URL}/metricas/categorias`, {
-        headers: getHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch categories');
-    return await res.json();
+    const res = await axios.get(`${API_URL}/metricas/categorias`, getAuthHeaders());
+    return res.data;
 }
 
 export async function getQuestions() {
-    const res = await fetch(`${API_URL}/metricas/preguntas`, {
-        headers: getHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to fetch questions');
-    return await res.json();
+    const res = await axios.get(`${API_URL}/metricas/preguntas`, getAuthHeaders());
+    return res.data;
 }
 
 export async function createCategory(data) {
-    const res = await fetch(`${API_URL}/metricas/categorias`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to create category');
+    try {
+        const res = await axios.post(`${API_URL}/metricas/categorias`, data, getAuthHeaders());
+        return res.data;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al crear categoría');
     }
-    return await res.json();
 }
 
 export async function updateCategory(id, data) {
-    const res = await fetch(`${API_URL}/metricas/categorias/${id}`, {
-        method: 'PUT',
-        headers: getHeaders(),
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to update category');
+    try {
+        const res = await axios.put(`${API_URL}/metricas/categorias/${id}`, data, getAuthHeaders());
+        return res.data;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al actualizar categoría');
     }
-    return await res.json();
 }
 
 export async function deleteCategory(id) {
-    const res = await fetch(`${API_URL}/metricas/categorias/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to delete category');
-    return true;
+    try {
+        await axios.delete(`${API_URL}/metricas/categorias/${id}`, getAuthHeaders());
+        return true;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al eliminar categoría');
+    }
 }
 
 export async function createQuestion(data) {
-    const res = await fetch(`${API_URL}/metricas/preguntas`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to create question');
+    try {
+        const res = await axios.post(`${API_URL}/metricas/preguntas`, data, getAuthHeaders());
+        return res.data;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al crear pregunta');
     }
-    return await res.json();
 }
 
 export async function updateQuestion(id, data) {
-    const res = await fetch(`${API_URL}/metricas/preguntas/${id}`, {
-        method: 'PUT',
-        headers: getHeaders(),
-        body: JSON.stringify(data)
-    });
-    if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || 'Failed to update question');
+    try {
+        const res = await axios.put(`${API_URL}/metricas/preguntas/${id}`, data, getAuthHeaders());
+        return res.data;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al actualizar pregunta');
     }
-    return await res.json();
+}
+
+export async function toggleQuestionActive(id, activo) {
+    try {
+        const res = await axios.put(`${API_URL}/metricas/preguntas/${id}`, { activo }, getAuthHeaders());
+        return res.data;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al cambiar estado de la pregunta');
+    }
 }
 
 export async function deleteQuestion(id) {
-    const res = await fetch(`${API_URL}/metricas/preguntas/${id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-    });
-    if (!res.ok) throw new Error('Failed to delete question');
-    return true;
+    try {
+        await axios.delete(`${API_URL}/metricas/preguntas/${id}`, getAuthHeaders());
+        return true;
+    } catch (err) {
+        throw new Error(err.response?.data?.detail || err.message || 'Error al eliminar pregunta');
+    }
 }

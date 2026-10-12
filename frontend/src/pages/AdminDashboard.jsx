@@ -17,6 +17,67 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { useCustomDialog } from "../components/common/CustomDialog";
 import { getEcuadorDateString, getEcuadorTimeString, getEcuadorDateTimeString } from "../utils/date";
 
+// Helper functions for human-readable audit logs
+const getAccionBadge = (tipo) => {
+    switch (tipo) {
+        case 'INSERT':
+            return { label: 'Creó nuevo registro', color: '#166534', bg: '#dcfce7', border: '#bbf7d0', verb: 'creó' };
+        case 'UPDATE':
+            return { label: 'Actualizó información', color: '#92400e', bg: '#fef3c7', border: '#fde68a', verb: 'actualizó' };
+        case 'DELETE':
+            return { label: 'Eliminó registro', color: '#991b1b', bg: '#fee2e2', border: '#fecaca', verb: 'eliminó' };
+        default:
+            return { label: tipo, color: '#374151', bg: '#f3f4f6', border: '#e5e7eb', verb: 'modificó' };
+    }
+};
+
+const getTablaHumanReadable = (tabla) => {
+    const map = {
+        'cajas': 'Caja / Punto de Venta',
+        'usuarios': 'Usuario del Sistema',
+        'contactos': 'Personal / Contacto',
+        'sucursales': 'Sucursal',
+        'categorias_preguntas': 'Categoría de Métrica',
+        'catalogo_preguntas': 'Pregunta de Evaluación',
+        'analisis_general': 'Calificación de Atención',
+        'respuestas_evaluacion': 'Criterio Evaluado',
+        'grabaciones': 'Grabación de Audio',
+        'atenciones': 'Atención al Cliente'
+    };
+    return map[tabla] || tabla.replace(/_/g, ' ');
+};
+
+const getHumanLogDescription = (log) => {
+    const actor = log.usuario_actor ? log.usuario_actor.username : "Sistema";
+    const accion = getAccionBadge(log.tipo_accion);
+    const entidad = getTablaHumanReadable(log.tabla_afectada);
+    
+    // Intenta extraer detalles específicos del cambio si existen
+    let detalle = "";
+    if (log.cambios_json && typeof log.cambios_json === 'object') {
+        if (log.cambios_json.nombre_identificador) {
+            detalle = ` "${log.cambios_json.nombre_identificador}"`;
+        } else if (log.cambios_json.nombre) {
+            detalle = ` "${log.cambios_json.nombre}"`;
+        } else if (log.cambios_json.texto_pregunta) {
+            detalle = ` "${log.cambios_json.texto_pregunta.slice(0, 35)}..."`;
+        } else if (log.cambios_json.username) {
+            detalle = ` "${log.cambios_json.username}"`;
+        } else if (log.cambios_json.estado_operativo) {
+            detalle = ` (Estado: ${log.cambios_json.estado_operativo})`;
+        } else if (log.cambios_json.activo !== undefined) {
+            detalle = log.cambios_json.activo ? ' (Habilitada)' : ' (Deshabilitada)';
+        }
+    }
+    
+    return {
+        actor,
+        accion,
+        entidad,
+        detalle,
+        resumen: `El usuario ${actor} ${accion.verb} ${entidad.toLowerCase()}${detalle}`
+    };
+};
 
 export default function AdminDashboard({ user }) {
     const { alert, confirm } = useCustomDialog();
@@ -578,13 +639,23 @@ export default function AdminDashboard({ user }) {
 
 
     const filteredRecordings = allRecordings.filter(rec => {
-        const matchesSearch =
-            rec.id.toLowerCase().includes(filters.search.toLowerCase()) ||
-            rec.cajero.toLowerCase().includes(filters.search.toLowerCase()) ||
-            rec.caja.toLowerCase().includes(filters.search.toLowerCase());
+        const q = (filters.search || "").toLowerCase().trim();
+        const matchesSearch = !q ||
+            (rec.id && rec.id.toLowerCase().includes(q)) ||
+            (rec.rawId && rec.rawId.toLowerCase().includes(q)) ||
+            (rec.cajero && rec.cajero.toLowerCase().includes(q)) ||
+            (rec.caja && rec.caja.toLowerCase().includes(q));
 
-        const matchesDate = filters.date ? rec.fecha.includes(getEcuadorDateString(filters.date)) : true;
-        const matchesTime = filters.time ? rec.hora.startsWith(filters.time) : true;
+        let matchesDate = true;
+        if (filters.date) {
+            // filters.date comes from <input type="date"> as "YYYY-MM-DD"
+            const expectedDate = filters.date.trim();
+            // rec.fecha is formatted with getEcuadorDateString which is "YYYY-MM-DD"
+            const recEcuadorDate = rec.fecha || (rec.fecha_hora_inicio ? getEcuadorDateString(rec.fecha_hora_inicio) : "");
+            matchesDate = recEcuadorDate === expectedDate;
+        }
+
+        const matchesTime = filters.time ? (rec.hora && rec.hora.startsWith(filters.time)) : true;
 
         return matchesSearch && matchesDate && matchesTime;
     });
@@ -976,23 +1047,24 @@ export default function AdminDashboard({ user }) {
                             <div className="card stat-card">
                                 <div className="stat-icon bg-blue">📦</div>
                                 <div className="stat-info">
-                                    <h3>Cajas Configuradas</h3>
-                                    <p className="value">{boxConfigs.length}</p>
+                                    <h3>Cajas Operativas</h3>
+                                    <p className="value">{boxConfigs.filter(b => b.estado_operativo === 'Operativa' || b.enabled).length} <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '500' }}>/ {boxConfigs.length}</span></p>
                                 </div>
                             </div>
 
                             <div className="card stat-card">
-                                <div className="stat-icon bg-green">🟢</div>
+                                <div className="stat-icon bg-green">👥</div>
                                 <div className="stat-info">
-                                    <h3>Cajas Activas</h3>
-                                    <p className="value">{boxConfigs.filter(box => box.enabled).length}</p>
+                                    <h3>Personal Cajeros</h3>
+                                    <p className="value">{contacts.filter(c => c.rol?.toLowerCase() === 'cajero').length || users.filter(u => u.rol?.nombre?.toLowerCase() === 'cajero').length}</p>
                                 </div>
                             </div>
+
                             <div className="card stat-card">
-                                <div className="stat-icon bg-orange">👥</div>
+                                <div className="stat-icon bg-orange">🎙️</div>
                                 <div className="stat-info">
-                                    <h3>Cajeros Activos</h3>
-                                    <p className="value">{users.filter(u => u.rol?.nombre?.toLowerCase() === 'cajero' && u.activo).length}</p>
+                                    <h3>Grabaciones Procesadas</h3>
+                                    <p className="value">{allRecordings.length}</p>
                                 </div>
                             </div>
                         </div>
@@ -2126,24 +2198,48 @@ export default function AdminDashboard({ user }) {
                                                     </div>
                                                 </td>
 
-                                                {/* Acción */}
+                                                {/* Acción y Descripción Humana */}
                                                 <td style={{ verticalAlign: 'middle', paddingTop: '1.25rem', paddingBottom: '1.25rem' }}>
-                                                    <span className="status-badge" style={{
-                                                        padding: '0.4rem 0.85rem', borderRadius: '6px',
-                                                        backgroundColor: log.tipo_accion === 'INSERT' ? '#dcfce7' : log.tipo_accion === 'UPDATE' ? '#fef3c7' : log.tipo_accion === 'DELETE' ? '#fee2e2' : '#f3f4f6',
-                                                        color: log.tipo_accion === 'INSERT' ? '#166534' : log.tipo_accion === 'UPDATE' ? '#92400e' : log.tipo_accion === 'DELETE' ? '#991b1b' : '#374151',
-                                                        fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.05em',
-                                                        display: 'inline-block'
-                                                    }}>
-                                                        {log.tipo_accion}
-                                                    </span>
+                                                    {(() => {
+                                                        const human = getHumanLogDescription(log);
+                                                        return (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                                                <span className="status-badge" style={{
+                                                                    padding: '0.35rem 0.75rem', borderRadius: '6px',
+                                                                    backgroundColor: human.accion.bg,
+                                                                    color: human.accion.color,
+                                                                    border: `1px solid ${human.accion.border}`,
+                                                                    fontWeight: '700', fontSize: '0.78rem',
+                                                                    display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                                                    width: 'fit-content'
+                                                                }}>
+                                                                    {human.accion.label}
+                                                                </span>
+                                                                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                                                    {human.resumen}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </td>
 
                                                 {/* Entidad Afectada */}
                                                 <td style={{ verticalAlign: 'middle', paddingTop: '1.25rem', paddingBottom: '1.25rem' }}>
-                                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>
-                                                        {log.tipo_accion === 'INSERT' ? 'Creación de registro' : log.tipo_accion === 'UPDATE' ? 'Edición de registro' : log.tipo_accion === 'DELETE' ? 'Eliminación de registro' : 'Acción registrada'} en <strong style={{ textTransform: 'capitalize' }}>{log.tabla_afectada.replace(/_/g, ' ')}</strong>
-                                                    </span>
+                                                    {(() => {
+                                                        const human = getHumanLogDescription(log);
+                                                        return (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                                <span style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+                                                                    {human.entidad}
+                                                                </span>
+                                                                {human.detalle && (
+                                                                    <span style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: '500' }}>
+                                                                        {human.detalle}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </td>
                                             </tr>
                                         ))}
@@ -2328,9 +2424,14 @@ export default function AdminDashboard({ user }) {
                                                             backgroundColor: log.tipo_accion === 'INSERT' ? '#10b981' : log.tipo_accion === 'UPDATE' ? '#f59e0b' : log.tipo_accion === 'DELETE' ? '#ef4444' : '#64748b'
                                                         }} />
                                                         <div style={{ flex: 1 }}>
-                                                            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#334155', lineHeight: '1.4' }}>
-                                                                <span style={{ fontWeight: '600', color: '#0f172a' }}>{log.usuario_actor ? log.usuario_actor.username : "Sistema"}</span> realizó un <strong style={{ color: log.tipo_accion === 'INSERT' ? '#059669' : log.tipo_accion === 'UPDATE' ? '#d97706' : '#dc2626' }}>{log.tipo_accion}</strong> en {log.tabla_afectada}
-                                                            </p>
+                                                            {(() => {
+                                                                const human = getHumanLogDescription(log);
+                                                                return (
+                                                                    <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#334155', lineHeight: '1.4' }}>
+                                                                        <span style={{ fontWeight: '700', color: '#0f172a' }}>{human.actor}</span> {human.accion.verb} <strong>{human.entidad.toLowerCase()}</strong>{human.detalle}
+                                                                    </p>
+                                                                );
+                                                            })()}
                                                             <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{getEcuadorDateTimeString(log.fecha_accion)}</span>
                                                         </div>
                                                     </div>

@@ -328,8 +328,8 @@ async def delete_categoria_pregunta(db: AsyncSession, categoria_id: UUID):
 async def get_catalogo_preguntas(db: AsyncSession, skip: int = 0, limit: int = 100):
     result = await db.execute(
         select(models.CatalogoPreguntas)
-        .where(models.CatalogoPreguntas.activo == True)
         .options(joinedload(models.CatalogoPreguntas.categoria))
+        .order_by(models.CatalogoPreguntas.activo.desc(), models.CatalogoPreguntas.id)
         .offset(skip)
         .limit(limit)
     )

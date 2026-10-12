@@ -406,14 +406,15 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
                                 {Math.round(score)}
                             </span>
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <h3 style={{ margin: '0 0 0.35rem', color: '#431407', fontSize: '1.2rem', fontWeight: '800' }}>Calificación General</h3>
-                            <p style={{
-                                margin: 0, color: '#7c6a5f', fontSize: '0.85rem', lineHeight: '1.45',
-                                background: '#fdfbf9', padding: '0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0', whiteSpace: 'pre-line'
-                            }} title={analysis.resumen_ejecutivo}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <h3 style={{ margin: '0 0 0.5rem', color: '#431407', fontSize: '1.25rem', fontWeight: '800' }}>Calificación General & Análisis</h3>
+                            <div style={{
+                                margin: 0, color: '#431407', fontSize: '0.9rem', lineHeight: '1.6',
+                                background: '#fdfbf9', padding: '1rem 1.25rem', borderRadius: '14px', border: '1px solid #fed7aa',
+                                whiteSpace: 'pre-line', maxHeight: '250px', overflowY: 'auto'
+                            }}>
                                 {analysis.resumen_ejecutivo || "Puntuación consolidada obtenida de los criterios obligatorios y adicionales evaluados por IA."}
-                            </p>
+                            </div>
                         </div>
                     </div>
 

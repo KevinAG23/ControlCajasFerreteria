@@ -38,6 +38,46 @@ axios.interceptors.response.use(
 function App() {
   const [user, setUser] = useState(() => getCurrentUser() || null);
 
+  // Inactividad de 30 minutos: cierra sesión automáticamente tras 30 min sin interacción
+  useEffect(() => {
+    if (!user) return;
+
+    const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
+    let timer;
+
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        logout();
+        setUser(null);
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+      }, INACTIVITY_TIMEOUT_MS);
+    };
+
+    const events = ["mousedown", "mousemove", "keydown", "scroll", "touchstart"];
+    events.forEach(event => window.addEventListener(event, resetTimer, { passive: true }));
+    resetTimer();
+
+    // Verificación periódica cada 1 minuto de expiración del token JWT
+    const interval = setInterval(() => {
+      if (!isTokenValid()) {
+        logout();
+        setUser(null);
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
+      }
+    }, 60 * 1000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [user]);
+
   return (
     <CustomDialogProvider>
       <BrowserRouter>

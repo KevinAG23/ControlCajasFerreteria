@@ -9,7 +9,9 @@ import {
     Save,
     X,
     LayoutList,
-    MessageSquare
+    MessageSquare,
+    ToggleLeft,
+    ToggleRight
 } from 'lucide-react';
 import {
     getCategories,
@@ -19,6 +21,7 @@ import {
     deleteCategory,
     createQuestion,
     updateQuestion,
+    toggleQuestionActive,
     deleteQuestion
 } from '../../api/metrics';
 import { useCustomDialog } from '../common/CustomDialog';
@@ -167,6 +170,30 @@ export default function MetricsManager() {
             await deleteQuestion(id);
             fetchData();
             await alert({ type: 'success', message: 'Pregunta eliminada correctamente' });
+        } catch (err) {
+            await alert({ type: 'error', message: err.message });
+        }
+    };
+
+    const handleToggleQuestion = async (q, e) => {
+        if (e) e.stopPropagation();
+        const nuevoEstado = q.activo === false ? true : false;
+        try {
+            await toggleQuestionActive(q.id, nuevoEstado);
+            // Optimistically update local state for instantaneous feedback
+            setCategories(prev => prev.map(cat => {
+                if (cat.id !== q.categoria_id) return cat;
+                return {
+                    ...cat,
+                    preguntas: (cat.preguntas || []).map(item => item.id === q.id ? { ...item, activo: nuevoEstado } : item)
+                };
+            }));
+            await alert({ 
+                type: 'success', 
+                message: nuevoEstado 
+                    ? 'Pregunta habilitada. El LLM evaluará esta métrica.' 
+                    : 'Pregunta deshabilitada. El LLM NO evaluará esta métrica.' 
+            });
         } catch (err) {
             await alert({ type: 'error', message: err.message });
         }
@@ -396,7 +423,39 @@ export default function MetricsManager() {
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            {/* Botón para Activar / Desactivar la métrica para el LLM */}
+                                                            <button
+                                                                onClick={(e) => handleToggleQuestion(q, e)}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.35rem',
+                                                                    padding: '0.35rem 0.7rem',
+                                                                    borderRadius: '8px',
+                                                                    border: `1.5px solid ${q.activo !== false ? '#bbf7d0' : '#e2e8f0'}`,
+                                                                    background: q.activo !== false ? '#f0fdf4' : '#f8fafc',
+                                                                    color: q.activo !== false ? '#15803d' : '#64748b',
+                                                                    fontSize: '0.78rem',
+                                                                    fontWeight: '700',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                                title={q.activo !== false ? "Haga clic para deshabilitar del LLM" : "Haga clic para habilitar en el LLM"}
+                                                            >
+                                                                {q.activo !== false ? (
+                                                                    <>
+                                                                        <ToggleRight size={18} color="#16a34a" />
+                                                                        <span>Habilitada (LLM)</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <ToggleLeft size={18} color="#94a3b8" />
+                                                                        <span>Deshabilitada</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+
                                                             <button
                                                                 onClick={() => openQuestionModal(cat, q)}
                                                                 style={{ padding: '0.4rem', borderRadius: '6px', border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}

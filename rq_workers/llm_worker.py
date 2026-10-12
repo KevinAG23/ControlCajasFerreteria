@@ -130,7 +130,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
 
     compact_format = (
         "{\n"
-        '  "resumen_ejecutivo": "Analiza cómo abordó la venta, cordialidad, palabras indebidas, tono (máx 3 frases).",\n'
+        '  "resumen_ejecutivo": "Escribe un análisis descriptivo y completo de 2 a 3 párrafos detallando: 1) Cómo se desarrolló la atención y el proceso de venta o cobro, 2) El nivel de cordialidad, respeto, tono de voz y trato al cliente, y 3) La conducta y profesionalismo del cajero.",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
         '  "calificacion_general": 0 a 100,\n'
         '  "actitudes": "Actitud detectada basada en las palabras usadas (máx. 1 frase).",\n'
