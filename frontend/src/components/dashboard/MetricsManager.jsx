@@ -153,6 +153,7 @@ export default function MetricsManager() {
         if (!isConfirmed) return;
         try {
             await deleteCategory(id);
+            setCategories(prev => prev.filter(c => c.id !== id));
             fetchData();
             await alert({ type: 'success', message: 'Categoría eliminada correctamente' });
         } catch (err) {
@@ -170,6 +171,10 @@ export default function MetricsManager() {
         if (!isConfirmed) return;
         try {
             await deleteQuestion(id);
+            setCategories(prev => prev.map(cat => ({
+                ...cat,
+                preguntas: (cat.preguntas || []).filter(q => q.id !== id)
+            })));
             fetchData();
             await alert({ type: 'success', message: 'Pregunta eliminada correctamente' });
         } catch (err) {

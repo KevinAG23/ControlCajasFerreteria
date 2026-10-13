@@ -308,26 +308,13 @@ async def update_categoria_pregunta(db: AsyncSession, categoria_id: UUID, catego
     return db_categoria
 
 async def delete_categoria_pregunta(db: AsyncSession, categoria_id: UUID):
-    has_evals = False
-    cat = await db.execute(select(models.CategoriaPregunta).where(models.CategoriaPregunta.id == categoria_id).options(selectinload(models.CategoriaPregunta.preguntas)))
-    cat_obj = cat.scalars().first()
-    if not cat_obj: return
-    
-    for p in cat_obj.preguntas:
-        res = await db.execute(select(models.RespuestaEvaluacion).where(models.RespuestaEvaluacion.pregunta_id == p.id))
-        if res.scalars().first():
-            has_evals = True
-            break
-            
-    if has_evals:
-        cat_obj.activo = False
-        for p in cat_obj.preguntas:
-            p.activo = False
-        await db.commit()
-    else:
-        query = delete(models.CategoriaPregunta).where(models.CategoriaPregunta.id == categoria_id)
-        await db.execute(query)
-        await db.commit()
+    res = await db.execute(select(models.CatalogoPreguntas.id).where(models.CatalogoPreguntas.categoria_id == categoria_id))
+    preg_ids = res.scalars().all()
+    if preg_ids:
+        await db.execute(delete(models.RespuestaEvaluacion).where(models.RespuestaEvaluacion.pregunta_id.in_(preg_ids)))
+        await db.execute(delete(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id.in_(preg_ids)))
+    await db.execute(delete(models.CategoriaPregunta).where(models.CategoriaPregunta.id == categoria_id))
+    await db.commit()
 
 # ---- CATALOGO PREGUNTAS ----
 async def get_catalogo_preguntas(db: AsyncSession, skip: int = 0, limit: int = 100):
@@ -365,18 +352,9 @@ async def update_catalogo_pregunta(db: AsyncSession, pregunta_id: UUID, pregunta
     return db_pregunta
 
 async def delete_catalogo_pregunta(db: AsyncSession, pregunta_id: UUID):
-    res = await db.execute(select(models.RespuestaEvaluacion).where(models.RespuestaEvaluacion.pregunta_id == pregunta_id))
-    if res.scalars().first():
-        query = select(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id == pregunta_id)
-        result = await db.execute(query)
-        db_pregunta = result.scalars().first()
-        if db_pregunta:
-            db_pregunta.activo = False
-            await db.commit()
-    else:
-        query = delete(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id == pregunta_id)
-        await db.execute(query)
-        await db.commit()
+    await db.execute(delete(models.RespuestaEvaluacion).where(models.RespuestaEvaluacion.pregunta_id == pregunta_id))
+    await db.execute(delete(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id == pregunta_id))
+    await db.commit()
 
 # ---- GRABACIONES ----
 async def get_grabaciones(db: AsyncSession, skip: int = 0, limit: int = 100):

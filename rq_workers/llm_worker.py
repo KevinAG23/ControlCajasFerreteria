@@ -130,39 +130,31 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
 
     compact_format = (
         "{\n"
-        '  "resumen_ejecutivo": "Escribe un reporte de auditoría amplio, exhaustivo y estructurado en 4 a 5 párrafos ricos en detalle, separados por doble salto de línea (\\n\\n):\\n\\n'
-        '1. CALIDAD DEL AUDIO Y DE LA TRANSCRIPCIÓN: Evalúa la claridad del diálogo. Si hubo buena o mala transcripción, partes inaudibles, ruidos de fondo (motos, caja, herramientas, murmullos), qué fragmentos y palabras exactas sí se lograron captar y el nivel de comprensión general.\\n\\n'
-        '2. DESARROLLO DE LA ATENCIÓN Y PROCESO COMERCIAL: Describe minuciosamente el paso a paso: qué productos, herramientas o materiales se solicitaron o consultaron (medidas, cantidades, tipos), precios mencionados, confirmación de stock, métodos de pago (efectivo, tarjeta) y emisión de comprobante/factura.\\n\\n'
-        '3. HABILIDADES BLANDAS Y TRATO DEL CAJERO: Analiza a fondo el saludo, tono de voz (amable, apresurado, neutro, empático), nivel de respeto, paciencia para resolver dudas, actitud y protocolo de despedida.\\n\\n'
-        '4. ALERTAS, PUNTOS CRÍTICOS Y HALLAZGOS RELEVANTES: Señala cualquier omisión de protocolo (no pedir datos de factura/RUC, no ofrecer promociones o productos complementarios, no agradecer, etc.), posibles quejas, dudas no resueltas, silencios largos o cualquier detalle inusual o interesante detectado en la grabación.\\n\\n'
-        '5. CONCLUSIÓN Y RECOMENDACIONES DE CALIDAD: Dictamen final sobre el desempeño del cajero y recomendaciones prácticas concretas para mejorar el servicio.",\n'
+        '  "resumen_ejecutivo": "Escribe un reporte de auditoría amplio, enriquecido y estructurado en 3 párrafos separados por doble salto de línea (\\n\\n):\\n\\n'
+        '1. CALIDAD DEL AUDIO Y TRANSCRIPCIÓN: Claridad del diálogo, si se captaron las palabras clave o hubo interferencias/ruidos de fondo (motos, herramientas, murmullos), partes inaudibles y fragmentos detectados.\\n\\n'
+        '2. ATENCIÓN COMERCIAL Y TRATO AL CLIENTE: Detalle de productos consultados/vendidos (materiales, medidas, cantidades), precios o formas de pago, emisión de factura/boleta, amabilidad, paciencia y actitud del cajero.\\n\\n'
+        '3. ALERTAS OPERATIVAS Y CONCLUSIÓN: Omisiones de protocolo detectadas (no pedir RUC/factura, no ofrecer promociones o productos complementarios, despedida), puntos inusuales o interesantes observados y dictamen final del servicio.",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
         '  "calificacion_general": 0 a 100,\n'
-        '  "actitudes": "Actitud detectada basada en las palabras usadas (ej: Atento, cordial y proactivo).",\n'
+        '  "actitudes": "Actitud detectada (ej: Atento, cordial y proactivo)",\n'
         '  "evaluaciones": [\n'
         '    {\n'
         '      "pregunta_id": "ID de la pregunta",\n'
         '      "cumple": true | false,\n'
-        '      "justificacion_ia": "Cita o justificación breve (Máx 10 palabras)."\n'
+        '      "justificacion_ia": "Cita o motivo conciso (máximo 6 a 8 palabras)"\n'
         '    }\n'
         '  ]\n'
         "}"
     )
 
     user = (
-        "Evalúa el cumplimiento de las métricas en la siguiente transcripción.\n"
-        "REGLAS DE AUDITORÍA FLEXIBLE:\n"
-        "1. COMPRENSIÓN DEL CONTEXTO: Basa tu respuesta en el texto y su contexto natural. Las conversaciones reales son informales; acepta sinónimos, expresiones coloquiales o intenciones claras.\n"
-        "2. EXHAUSTIVIDAD: Debes incluir OBLIGATORIAMENTE una evaluación para cada una de las preguntas de la lista. El número de evaluaciones debe ser EXACTO al de preguntas.\n"
-        "3. PERMISIVO Y RAZONABLE: Para cada pregunta, evalúa según el 'Criterio', pero con flexibilidad. Si el cajero cumplió el propósito de la regla, evalúalo como 'true'.\n"
-        "4. IDENTIFICACIÓN DEL CAJERO: Las métricas aplican a las intervenciones del cajero. Usa el sentido común para diferenciar al cajero del cliente.\n"
-        "5. BOOLEANO: 'cumple': true si se cumple la intención o acción; false solo si hubo una omisión clara o fallo evidente.\n"
-        "6. JUSTIFICACIÓN: En 'justificacion_ia' provee una breve explicacion o cita que demuestre el cumplimiento. Si 'cumple' es false, escribe 'No se evidencio la accion'.\n"
-        "7. 'calificacion_general': Porcentaje de cumplimiento de 0 a 100 ((cantidad de cumple=true / total evaluaciones) * 100).\n"
-        "8. AUDITORÍA EXHAUSTIVA Y DETALLADA (OBLIGATORIO):\n"
-        "   - El campo 'resumen_ejecutivo' DEBE ser extenso y detallado (al menos 4 a 5 párrafos completos, uno por cada punto especificado).\n"
-        "   - Si la conversación es corta o la transcripción tiene pocos textos, NO pongas solo 'la transcripción carece de detalles'. En su lugar, describe qué palabras y ruidos sí se escucharon, en qué segundo ocurrieron, y levanta una ALERTA sobre las partes inaudibles o sospecha de transacciones fuera del micrófono.\n"
-        "   - Señala siempre hallazgos y alertas de servicio (omisiones de protocolo, promociones, factura, saludo, despedida, etc.).\n\n"
+        "Evalúa las métricas en la transcripción de la atención.\n"
+        "REGLAS DE AUDITORÍA FLEXIBLE Y CONTROL ESTRICTO DE TOKENS:\n"
+        "1. EVALUACIÓN POR SIMILITUD E INTENCIÓN (FLEXIBLE): No seas excesivamente estricto con palabras literales exactas. Si el cajero expresó una idea similar, utilizó sinónimos o lenguaje cotidiano, o se deduce razonablemente que satisfizo el propósito de la regla, califica 'cumple': true. Solo marca 'cumple': false si hubo una omisión total, negativa o falta clara.\n"
+        "2. EXHAUSTIVIDAD OBLIGATORIA: Debes incluir una evaluación por cada una de las preguntas listadas, utilizando exactamente su ID.\n"
+        "3. BREVEDAD EN JUSTIFICACIÓN (CRÍTICO PARA AHORRO DE TOKENS): En 'justificacion_ia' sé sumamente breve (máximo 6 a 8 palabras, ej: 'Saludó cortésmente', 'Mencionó precio y cambio', 'No solicitó datos de factura').\n"
+        "4. RESUMEN ESTRUCTURADO: En 'resumen_ejecutivo' redacta 3 párrafos descriptivos y detallados cubriendo: 1. Audio y Transcripción, 2. Atención Comercial y Trato, 3. Alertas y Conclusión.\n"
+        "5. CALIFICACIÓN GENERAL: Porcentaje numérico de 0 a 100 ((cantidad cumple=true / total evaluaciones) * 100).\n\n"
         f"PREGUNTAS A EVALUAR:\n{lista_preguntas_str}\n\n"
         f"FORMATO JSON REQUERIDO:\n{compact_format}\n\n"
         f"TRANSCRIPCIÓN (INPUT):\n{json.dumps(payload, ensure_ascii=False)}"
@@ -197,6 +189,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
                     model=groq_model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.2,
+                    max_tokens=700,
                 )
                 log_llm_cost(f"GROQ_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
@@ -212,6 +205,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
                     temperature=0.2,
                     timeout=LLM_TIMEOUT_SEC,
                     response_format={"type": "json_object"},
+                    max_tokens=700,
                 )
                 log_llm_cost(f"OPENAI_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
@@ -291,6 +285,7 @@ def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
                     model=groq_model,
                     messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
                     temperature=0.1,
+                    max_tokens=450,
                 )
                 log_llm_cost(f"GROQ_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
@@ -306,6 +301,7 @@ def call_llm_extract(payload: Dict[str, Any]) -> Dict[str, Any]:
                     temperature=0.1,
                     timeout=LLM_TIMEOUT_SEC,
                     response_format={"type": "json_object"},
+                    max_tokens=450,
                 )
                 log_llm_cost(f"OPENAI_{key_name}", input_chars, payload)
                 return _parse_json_strict((resp.choices[0].message.content or "").strip())
