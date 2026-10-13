@@ -332,6 +332,22 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
         height: inline ? 'auto' : '90vh',
     };
 
+    // Parse executive summary and attitude (handles new and legacy composite text)
+    const rawResumen = analysis?.resumen_ejecutivo || "";
+    let displayActitud = analysis?.actitudes || "";
+    let cleanResumenText = rawResumen;
+
+    if (rawResumen.includes("Actitudes Detectadas:") || rawResumen.includes("Resumen:")) {
+        const actMatch = rawResumen.match(/Actitudes Detectadas:\s*\n*([^\n]+)/i);
+        if (actMatch && actMatch[1] && !displayActitud) {
+            displayActitud = actMatch[1].trim();
+        }
+        const resMatch = rawResumen.match(/Resumen:\s*\n*([\s\S]+)/i);
+        if (resMatch && resMatch[1]) {
+            cleanResumenText = resMatch[1].trim();
+        }
+    }
+
     const innerContent = (
         <div style={containerStyle}>
             <style>{`
@@ -442,7 +458,7 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
                     background: 'white', border: '1px solid #fed7aa', borderRadius: '24px',
                     padding: '2rem 2.5rem', boxShadow: '0 10px 25px -4px rgba(59,29,17,0.04)',
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <div style={{ padding: '0.6rem', borderRadius: '12px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center' }}>
                                 <IconFileText />
@@ -452,24 +468,85 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
                                     Detalle y Calificación General de la Atención
                                 </h3>
                                 <span style={{ fontSize: '0.82rem', color: '#7c6a5f' }}>
-                                    Análisis descriptivo completo del desenvolvimiento, cordialidad y transacción en caja
+                                    Auditoría integral: calidad de audio, proceso comercial, trato, alertas y recomendaciones
                                 </span>
                             </div>
                         </div>
-                        {analysis.actitudes && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fef3c7', padding: '0.4rem 0.9rem', borderRadius: '12px', border: '1px solid #fde68a' }}>
+                        {displayActitud && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fef3c7', padding: '0.45rem 1rem', borderRadius: '12px', border: '1px solid #fde68a' }}>
                                 <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#92400e', textTransform: 'uppercase' }}>Actitud Detectada:</span>
-                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#78350f' }}>{analysis.actitudes}</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#78350f' }}>{displayActitud}</span>
                             </div>
                         )}
                     </div>
 
-                    <div style={{
-                        color: '#334155', fontSize: '0.95rem', lineHeight: '1.8',
-                        background: '#fdfbf9', padding: '1.5rem', borderRadius: '16px', border: '1px solid #fed7aa',
-                        whiteSpace: 'pre-line'
-                    }}>
-                        {analysis.resumen_ejecutivo || "Puntuación consolidada obtenida de los criterios obligatorios y adicionales evaluados por IA."}
+                    {/* Formatted Sections or Rich Paragraphs */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {cleanResumenText ? (
+                            cleanResumenText.split(/\n\s*\n/).filter(p => p.trim().length > 0).map((paragraph, pIdx) => {
+                                const trimmed = paragraph.trim();
+                                const isAlert = /alerta|crítico|incumplimiento|anomalía|advertencia/i.test(trimmed);
+                                const isAudio = /audio|transcripci[oó]n|fidelidad|ruido|inaudible/i.test(trimmed);
+                                const isConclusion = /conclusi[oó]n|recomendaci[oó]n|sugerencia|veredicto/i.test(trimmed);
+                                const isCommercial = /venta|transacci[oó]n|cobro|precio|producto|factura/i.test(trimmed);
+
+                                let cardBg = '#fdfbf9';
+                                let cardBorder = '#fed7aa';
+                                let headerTitle = null;
+                                let headerBadge = null;
+
+                                if (isAlert) {
+                                    cardBg = '#fffbeb';
+                                    cardBorder = '#f59e0b';
+                                    headerTitle = '⚠️ ALERTA / HALLAZGO DE ATENCIÓN';
+                                    headerBadge = { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' };
+                                } else if (isAudio) {
+                                    cardBg = '#f8fafc';
+                                    cardBorder = '#cbd5e1';
+                                    headerTitle = '🎧 CALIDAD DE AUDIO Y TRANSCRIPCIÓN';
+                                    headerBadge = { bg: '#e2e8f0', color: '#334155', border: '#94a3b8' };
+                                } else if (isConclusion) {
+                                    cardBg = '#f0fdf4';
+                                    cardBorder = '#86efac';
+                                    headerTitle = '🎯 CONCLUSIÓN Y RECOMENDACIÓN';
+                                    headerBadge = { bg: '#dcfce7', color: '#15803d', border: '#86efac' };
+                                } else if (isCommercial) {
+                                    cardBg = '#fafaf9';
+                                    cardBorder = '#fed7aa';
+                                    headerTitle = '🛒 DESARROLLO DE LA ATENCIÓN Y VENTA';
+                                    headerBadge = { bg: '#ffedd5', color: '#c2410c', border: '#fed7aa' };
+                                }
+
+                                return (
+                                    <div
+                                        key={pIdx}
+                                        style={{
+                                            background: cardBg,
+                                            border: `1.5px solid ${cardBorder}`,
+                                            borderRadius: '16px',
+                                            padding: '1.25rem 1.5rem',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                            transition: 'transform 0.15s ease'
+                                        }}
+                                    >
+                                        {headerTitle && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: '800', letterSpacing: '0.05em', color: headerBadge.color, background: headerBadge.bg, padding: '0.2rem 0.6rem', borderRadius: '6px', border: `1px solid ${headerBadge.border}` }}>
+                                                    {headerTitle}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div style={{ color: '#334155', fontSize: '0.93rem', lineHeight: '1.75', whiteSpace: 'pre-line' }}>
+                                            {trimmed}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ color: '#64748b', fontStyle: 'italic', padding: '1rem', textAlign: 'center' }}>
+                                No hay análisis descriptivo disponible para esta atención.
+                            </div>
+                        )}
                     </div>
                 </div>
 

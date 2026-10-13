@@ -113,10 +113,10 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
     """
 
     system = (
-        "Eres un analista experto en calidad de servicio al cliente. "
-        "Tu tarea es evaluar la transcripción de manera integral, comprendiendo el contexto, la intención y las variaciones naturales del lenguaje hablado. "
-        "NO es estrictamente necesario que el cajero use las palabras exactas, siempre y cuando el significado o la intención de la métrica se cumpla (por ejemplo, saludar, despedirse, etc.). "
-        "Sé justo y permisivo si el cumplimiento es evidente en el contexto de la conversación real. "
+        "Eres un auditor senior experto en calidad y control de operaciones en cajas y atención al cliente en ferreterías. "
+        "Tu objetivo es realizar un análisis exhaustivo, crítico, detallado y minucioso de cada grabación y su transcripción. "
+        "Bajo ninguna circunstancia debes generar resúmenes superficiales, genéricos o de pocas líneas. "
+        "Incluso si la transcripción es breve, parcial o con interferencia, debes detallar exactamente qué palabras o sonidos se alcanzaron a escuchar, qué ruidos hubo (motos, herramientas, murmullos), qué se omitió y qué alertas operativas se desprenden de la interacción. "
         "Devuelve SIEMPRE JSON estricto, sin texto extra."
     )
 
@@ -130,15 +130,20 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
 
     compact_format = (
         "{\n"
-        '  "resumen_ejecutivo": "Escribe un análisis descriptivo, amplio y detallado de al menos 3 a 4 párrafos completos separados por doble salto de línea (\\n\\n). Párrafo 1: Detalla el inicio y la bienvenida, cómo el cliente se acerca al punto de venta y el primer contacto verbal del cajero. Párrafo 2: Describe minuciosamente el proceso de venta, cobro o transacción comercial, qué productos o consultas se gestionaron y la claridad en la comunicación. Párrafo 3: Analiza el nivel de cordialidad, tono de voz, empatía, respeto y actitud mostrada durante la atención. Párrafo 4: Conclusión global sobre el profesionalismo del cajero, despedida y sugerencias o puntos destacados de la atención.",\n'
+        '  "resumen_ejecutivo": "Escribe un reporte de auditoría amplio, exhaustivo y estructurado en 4 a 5 párrafos ricos en detalle, separados por doble salto de línea (\\n\\n):\\n\\n'
+        '1. CALIDAD DEL AUDIO Y DE LA TRANSCRIPCIÓN: Evalúa la claridad del diálogo. Si hubo buena o mala transcripción, partes inaudibles, ruidos de fondo (motos, caja, herramientas, murmullos), qué fragmentos y palabras exactas sí se lograron captar y el nivel de comprensión general.\\n\\n'
+        '2. DESARROLLO DE LA ATENCIÓN Y PROCESO COMERCIAL: Describe minuciosamente el paso a paso: qué productos, herramientas o materiales se solicitaron o consultaron (medidas, cantidades, tipos), precios mencionados, confirmación de stock, métodos de pago (efectivo, tarjeta) y emisión de comprobante/factura.\\n\\n'
+        '3. HABILIDADES BLANDAS Y TRATO DEL CAJERO: Analiza a fondo el saludo, tono de voz (amable, apresurado, neutro, empático), nivel de respeto, paciencia para resolver dudas, actitud y protocolo de despedida.\\n\\n'
+        '4. ALERTAS, PUNTOS CRÍTICOS Y HALLAZGOS RELEVANTES: Señala cualquier omisión de protocolo (no pedir datos de factura/RUC, no ofrecer promociones o productos complementarios, no agradecer, etc.), posibles quejas, dudas no resueltas, silencios largos o cualquier detalle inusual o interesante detectado en la grabación.\\n\\n'
+        '5. CONCLUSIÓN Y RECOMENDACIONES DE CALIDAD: Dictamen final sobre el desempeño del cajero y recomendaciones prácticas concretas para mejorar el servicio.",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
         '  "calificacion_general": 0 a 100,\n'
-        '  "actitudes": "Actitud detectada basada en las palabras usadas (máx. 1 frase).",\n'
+        '  "actitudes": "Actitud detectada basada en las palabras usadas (ej: Atento, cordial y proactivo).",\n'
         '  "evaluaciones": [\n'
         '    {\n'
         '      "pregunta_id": "ID de la pregunta",\n'
         '      "cumple": true | false,\n'
-        '      "justificacion_ia": "Justificación muy breve (Máx 5 palabras)."\n'
+        '      "justificacion_ia": "Cita o justificación breve (Máx 10 palabras)."\n'
         '    }\n'
         '  ]\n'
         "}"
@@ -154,7 +159,10 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
         "5. BOOLEANO: 'cumple': true si se cumple la intención o acción; false solo si hubo una omisión clara o fallo evidente.\n"
         "6. JUSTIFICACIÓN: En 'justificacion_ia' provee una breve explicacion o cita que demuestre el cumplimiento. Si 'cumple' es false, escribe 'No se evidencio la accion'.\n"
         "7. 'calificacion_general': Porcentaje de cumplimiento de 0 a 100 ((cantidad de cumple=true / total evaluaciones) * 100).\n"
-        "8. RESUMEN EJECUTIVO AMPLIO: Es imperativo que el 'resumen_ejecutivo' contenga entre 3 y 4 párrafos completos, bien redactados, descriptivos y profundos, explicando con claridad todo lo acontecido durante la atención al cliente.\n\n"
+        "8. AUDITORÍA EXHAUSTIVA Y DETALLADA (OBLIGATORIO):\n"
+        "   - El campo 'resumen_ejecutivo' DEBE ser extenso y detallado (al menos 4 a 5 párrafos completos, uno por cada punto especificado).\n"
+        "   - Si la conversación es corta o la transcripción tiene pocos textos, NO pongas solo 'la transcripción carece de detalles'. En su lugar, describe qué palabras y ruidos sí se escucharon, en qué segundo ocurrieron, y levanta una ALERTA sobre las partes inaudibles o sospecha de transacciones fuera del micrófono.\n"
+        "   - Señala siempre hallazgos y alertas de servicio (omisiones de protocolo, promociones, factura, saludo, despedida, etc.).\n\n"
         f"PREGUNTAS A EVALUAR:\n{lista_preguntas_str}\n\n"
         f"FORMATO JSON REQUERIDO:\n{compact_format}\n\n"
         f"TRANSCRIPCIÓN (INPUT):\n{json.dumps(payload, ensure_ascii=False)}"
@@ -633,7 +641,7 @@ def evaluate_atencion_job(atencion_id: str) -> Dict[str, Any]:
              calificacion = 0
         evaluaciones = out.get("evaluaciones") or []
 
-        resumen_db = f"Preguntas Evaluadas: {len(evaluaciones)}\n\nActitudes Detectadas:\n{actitudes}\n\nResumen:\n{resumen}".strip()
+        resumen_db = resumen if resumen else f"Atención evaluada ({len(evaluaciones)} preguntas)."
 
         analisis_id_row = db.execute(
             text(
