@@ -130,7 +130,7 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
 
     compact_format = (
         "{\n"
-        '  "resumen_ejecutivo": "Escribe un análisis descriptivo y completo de 2 a 3 párrafos detallando: 1) Cómo se desarrolló la atención y el proceso de venta o cobro, 2) El nivel de cordialidad, respeto, tono de voz y trato al cliente, y 3) La conducta y profesionalismo del cajero.",\n'
+        '  "resumen_ejecutivo": "Escribe un análisis descriptivo, amplio y detallado de al menos 3 a 4 párrafos completos separados por doble salto de línea (\\n\\n). Párrafo 1: Detalla el inicio y la bienvenida, cómo el cliente se acerca al punto de venta y el primer contacto verbal del cajero. Párrafo 2: Describe minuciosamente el proceso de venta, cobro o transacción comercial, qué productos o consultas se gestionaron y la claridad en la comunicación. Párrafo 3: Analiza el nivel de cordialidad, tono de voz, empatía, respeto y actitud mostrada durante la atención. Párrafo 4: Conclusión global sobre el profesionalismo del cajero, despedida y sugerencias o puntos destacados de la atención.",\n'
         '  "sentimiento_general": "POSITIVO" | "NEUTRO" | "NEGATIVO",\n'
         '  "calificacion_general": 0 a 100,\n'
         '  "actitudes": "Actitud detectada basada en las palabras usadas (máx. 1 frase).",\n'
@@ -153,7 +153,8 @@ def call_llm(payload: Dict[str, Any], preguntas: list) -> Dict[str, Any]:
         "4. IDENTIFICACIÓN DEL CAJERO: Las métricas aplican a las intervenciones del cajero. Usa el sentido común para diferenciar al cajero del cliente.\n"
         "5. BOOLEANO: 'cumple': true si se cumple la intención o acción; false solo si hubo una omisión clara o fallo evidente.\n"
         "6. JUSTIFICACIÓN: En 'justificacion_ia' provee una breve explicacion o cita que demuestre el cumplimiento. Si 'cumple' es false, escribe 'No se evidencio la accion'.\n"
-        "7. 'calificacion_general': Porcentaje de cumplimiento de 0 a 100 ((cantidad de cumple=true / total evaluaciones) * 100).\n\n"
+        "7. 'calificacion_general': Porcentaje de cumplimiento de 0 a 100 ((cantidad de cumple=true / total evaluaciones) * 100).\n"
+        "8. RESUMEN EJECUTIVO AMPLIO: Es imperativo que el 'resumen_ejecutivo' contenga entre 3 y 4 párrafos completos, bien redactados, descriptivos y profundos, explicando con claridad todo lo acontecido durante la atención al cliente.\n\n"
         f"PREGUNTAS A EVALUAR:\n{lista_preguntas_str}\n\n"
         f"FORMATO JSON REQUERIDO:\n{compact_format}\n\n"
         f"TRANSCRIPCIÓN (INPUT):\n{json.dumps(payload, ensure_ascii=False)}"
@@ -584,8 +585,15 @@ def evaluate_atencion_job(atencion_id: str) -> Dict[str, Any]:
         texto = row[0]
         grabacion_id = row[1]
         
-        # Cargar preguntas activas de catalogo_preguntas
-        rows_preg = db.execute(text("SELECT id::text, texto_pregunta, instruccion_ia, configuracion_respuesta, ejemplo_respuesta_esperada FROM public.catalogo_preguntas WHERE activo=true")).fetchall()
+        # Cargar preguntas activas de catalogo_preguntas pertenecientes a categorías activas
+        query_preguntas = """
+            SELECT p.id::text, p.texto_pregunta, p.instruccion_ia, p.configuracion_respuesta, p.ejemplo_respuesta_esperada 
+            FROM public.catalogo_preguntas p
+            JOIN public.categorias_preguntas c ON p.categoria_id = c.id
+            WHERE (p.activo IS TRUE OR p.activo IS NULL)
+              AND (c.activo IS TRUE OR c.activo IS NULL)
+        """
+        rows_preg = db.execute(text(query_preguntas)).fetchall()
         preguntas = [
             {"id": r[0], "texto_pregunta": r[1], "instruccion_ia": r[2], "configuracion_respuesta": r[3], "ejemplo_respuesta_esperada": r[4]} 
             for r in rows_preg

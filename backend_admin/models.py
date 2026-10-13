@@ -117,6 +117,7 @@ class CatalogoPreguntas(Base):
     tipo_respuesta = Column(String(50), default="ESCALA_NUMERICA")
     configuracion_respuesta = Column(JSONB, default={})
     instruccion_ia = Column(Text)
+    ejemplo_respuesta_esperada = Column(Text, nullable=True)
 
     categoria = relationship("CategoriaPregunta", back_populates="preguntas")
 

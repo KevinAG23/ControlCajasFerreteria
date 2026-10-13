@@ -131,15 +131,18 @@ class Caja(CajaBase):
 # ---- CATEGORIAS PREGUNTAS ----
 class CategoriaPreguntaBase(BaseModel):
     nombre: str
+    activo: Optional[bool] = True
 
 class CategoriaPreguntaCreate(CategoriaPreguntaBase):
     pass
 
 class CategoriaPreguntaUpdate(BaseModel):
     nombre: Optional[str] = None
+    activo: Optional[bool] = None
 
 class CategoriaPregunta(CategoriaPreguntaBase):
     id: UUID
+    activo: Optional[bool] = True
 
     class Config:
         from_attributes = True

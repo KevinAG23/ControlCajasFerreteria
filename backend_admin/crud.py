@@ -280,7 +280,12 @@ async def delete_caja(db: AsyncSession, caja_id: UUID):
 
 # ---- CATEGORIAS PREGUNTAS ----
 async def get_categorias_preguntas(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.CategoriaPregunta).where(models.CategoriaPregunta.activo == True).offset(skip).limit(limit))
+    result = await db.execute(
+        select(models.CategoriaPregunta)
+        .order_by(models.CategoriaPregunta.activo.desc(), models.CategoriaPregunta.nombre.asc())
+        .offset(skip)
+        .limit(limit)
+    )
     return result.scalars().all()
 
 async def create_categoria_pregunta(db: AsyncSession, categoria: schemas.CategoriaPreguntaCreate):
