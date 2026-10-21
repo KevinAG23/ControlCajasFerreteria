@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getLogs, getEstadoCajas } from "../api/admin";
+import { getLogs, getEstadoCajas, getSucursales, createSucursal, updateSucursal, deleteSucursal } from "../api/admin";
 import { getContacts, createContact, updateContact, deleteContact } from "../api/contacts";
 import { getUsers, createUser, updateUser, deleteUser, getRoles } from "../api/users";
 import { getCajas as getCajasDB, getTodasCajas, createCaja, updateCaja, deleteCaja } from "../api/cajas";
@@ -17,6 +17,67 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import { useCustomDialog } from "../components/common/CustomDialog";
 import { getEcuadorDateString, getEcuadorTimeString, getEcuadorDateTimeString } from "../utils/date";
 
+// Helper functions for human-readable audit logs
+const getAccionBadge = (tipo) => {
+    switch (tipo) {
+        case 'INSERT':
+            return { label: 'Creó nuevo registro', color: '#166534', bg: '#dcfce7', border: '#bbf7d0', verb: 'creó' };
+        case 'UPDATE':
+            return { label: 'Actualizó información', color: '#92400e', bg: '#fef3c7', border: '#fde68a', verb: 'actualizó' };
+        case 'DELETE':
+            return { label: 'Eliminó registro', color: '#991b1b', bg: '#fee2e2', border: '#fecaca', verb: 'eliminó' };
+        default:
+            return { label: tipo, color: '#374151', bg: '#f3f4f6', border: '#e5e7eb', verb: 'modificó' };
+    }
+};
+
+const getTablaHumanReadable = (tabla) => {
+    const map = {
+        'cajas': 'Caja / Punto de Venta',
+        'usuarios': 'Usuario del Sistema',
+        'contactos': 'Personal / Contacto',
+        'sucursales': 'Sucursal',
+        'categorias_preguntas': 'Categoría de Métrica',
+        'catalogo_preguntas': 'Pregunta de Evaluación',
+        'analisis_general': 'Calificación de Atención',
+        'respuestas_evaluacion': 'Criterio Evaluado',
+        'grabaciones': 'Grabación de Audio',
+        'atenciones': 'Atención al Cliente'
+    };
+    return map[tabla] || tabla.replace(/_/g, ' ');
+};
+
+const getHumanLogDescription = (log) => {
+    const actor = log.usuario_actor ? log.usuario_actor.username : "Sistema";
+    const accion = getAccionBadge(log.tipo_accion);
+    const entidad = getTablaHumanReadable(log.tabla_afectada);
+    
+    // Intenta extraer detalles específicos del cambio si existen
+    let detalle = "";
+    if (log.cambios_json && typeof log.cambios_json === 'object') {
+        if (log.cambios_json.nombre_identificador) {
+            detalle = ` "${log.cambios_json.nombre_identificador}"`;
+        } else if (log.cambios_json.nombre) {
+            detalle = ` "${log.cambios_json.nombre}"`;
+        } else if (log.cambios_json.texto_pregunta) {
+            detalle = ` "${log.cambios_json.texto_pregunta.slice(0, 35)}..."`;
+        } else if (log.cambios_json.username) {
+            detalle = ` "${log.cambios_json.username}"`;
+        } else if (log.cambios_json.estado_operativo) {
+            detalle = ` (Estado: ${log.cambios_json.estado_operativo})`;
+        } else if (log.cambios_json.activo !== undefined) {
+            detalle = log.cambios_json.activo ? ' (Habilitada)' : ' (Deshabilitada)';
+        }
+    }
+    
+    return {
+        actor,
+        accion,
+        entidad,
+        detalle,
+        resumen: `El usuario ${actor} ${accion.verb} ${entidad.toLowerCase()}${detalle}`
+    };
+};
 
 export default function AdminDashboard({ user }) {
     const { alert, confirm } = useCustomDialog();
@@ -71,7 +132,11 @@ export default function AdminDashboard({ user }) {
                         turno_tarde_inicio: b.turno_tarde_inicio,
                         turno_tarde_fin: b.turno_tarde_fin,
                         grabacion_habilitada: b.grabacion_habilitada,
-                        en_pausa: b.en_pausa
+                        en_pausa: b.en_pausa,
+                        duracion_segmento_minutos: b.duracion_segmento_minutos,
+                        microfono_asignado: b.microfono_asignado,
+                        lista_microfonos: b.lista_microfonos,
+                        version_actual: b.version_actual
                     }));
                     
                     // Sort boxes by name alphabetically
@@ -95,6 +160,7 @@ export default function AdminDashboard({ user }) {
         name: "",
         description: "",
         assignedContactId: "",
+                sucursal_id: "",
         recordingMode: "schedule",
         enabled: true,
         estado_operativo: "Operativa",
@@ -147,6 +213,7 @@ export default function AdminDashboard({ user }) {
             const boxData = {
                 nombre_identificador: boxForm.name,
                 ubicacion: boxForm.description,
+                sucursal_id: boxForm.sucursal_id || null,
                 activo: boxForm.estado_operativo === 'Operativa',
                 contacto_id: boxForm.assignedContactId || null,
                 estado_operativo: boxForm.estado_operativo,
@@ -156,7 +223,9 @@ export default function AdminDashboard({ user }) {
                 turno_tarde_inicio: boxForm.turno_tarde_inicio || "16:00:00",
                 turno_tarde_fin: boxForm.turno_tarde_fin || "19:00:00",
                 grabacion_habilitada: boxForm.grabacion_habilitada !== false,
-                en_pausa: boxForm.en_pausa === true
+                en_pausa: boxForm.en_pausa === true,
+                duracion_segmento_minutos: boxForm.duracion_segmento_minutos || 10,
+                microfono_asignado: boxForm.microfono_asignado || null
             };
 
             if (currentBox) {
@@ -175,6 +244,7 @@ export default function AdminDashboard({ user }) {
                 name: "",
                 description: "",
                 assignedContactId: "",
+                sucursal_id: "",
                 recordingMode: "schedule",
                 enabled: true,
                 estado_operativo: "Operativa",
@@ -218,6 +288,7 @@ export default function AdminDashboard({ user }) {
             setBoxForm({
                 name: box.name,
                 description: box.description || "",
+                sucursal_id: box.sucursal_id || "",
                 assignedContactId: box.assignedContactId || "",
                 recordingMode: box.recordingMode,
                 enabled: box.enabled,
@@ -228,7 +299,10 @@ export default function AdminDashboard({ user }) {
                 turno_tarde_inicio: box.turno_tarde_inicio || "16:00:00",
                 turno_tarde_fin: box.turno_tarde_fin || "19:00:00",
                 grabacion_habilitada: box.grabacion_habilitada !== false,
-                en_pausa: box.en_pausa === true
+                en_pausa: box.en_pausa === true,
+                duracion_segmento_minutos: box.duracion_segmento_minutos || 10,
+                microfono_asignado: box.microfono_asignado || "",
+                lista_microfonos: box.lista_microfonos || []
             });
         } else {
             setCurrentBox(null);
@@ -236,7 +310,8 @@ export default function AdminDashboard({ user }) {
                 name: "",
                 description: "",
                 assignedContactId: "",
-                recordingMode: "schedule",
+                sucursal_id: "",
+                recordingMode: "continuo",
                 enabled: true,
                 estado_operativo: "Operativa",
                 motivo_estado: "",
@@ -245,7 +320,10 @@ export default function AdminDashboard({ user }) {
                 turno_tarde_inicio: "16:00:00",
                 turno_tarde_fin: "19:00:00",
                 grabacion_habilitada: true,
-                en_pausa: false
+                en_pausa: false,
+                duracion_segmento_minutos: 10,
+                microfono_asignado: "",
+                lista_microfonos: []
             });
         }
         setShowBoxModal(true);
@@ -357,7 +435,11 @@ export default function AdminDashboard({ user }) {
 
     // Contacts Management State
     const [contacts, setContacts] = useState([]);
+    const [sucursales, setSucursales] = useState([]);
     const [showContactModal, setShowContactModal] = useState(false);
+    const [showSucursalModal, setShowSucursalModal] = useState(false);
+    const [currentSucursal, setCurrentSucursal] = useState(null);
+    const [sucursalForm, setSucursalForm] = useState({ nombre: "", direccion: "", activa: true });
     const [showCreateUserFromContactModal, setShowCreateUserFromContactModal] = useState(false);
     const [currentContact, setCurrentContact] = useState(null);
     const [contactsCurrentPage, setContactsCurrentPage] = useState(1);
@@ -367,7 +449,8 @@ export default function AdminDashboard({ user }) {
         email: "",
         telefono: "",
         direccion: "",
-        rol: "Cajero"
+        rol: "Cajero",
+        sucursal_id: ""
     });
     const [userFromContactForm, setUserFromContactForm] = useState({
         username: "",
@@ -391,12 +474,13 @@ export default function AdminDashboard({ user }) {
         if (isLoadingRef.current) return;
         isLoadingRef.current = true;
         try {
-            const [usersData, contactsData, rolesData, cajasData, grabacionesData] = await Promise.all([
+            const [usersData, contactsData, rolesData, cajasData, grabacionesData, sucursalesData] = await Promise.all([
                 getUsers(),
                 getContacts(),
                 getRoles(),
                 getTodasCajas(),
-                getGrabaciones()
+                getGrabaciones(),
+                getSucursales()
             ]);
             setUsers(usersData);
             setRoles(rolesData);
@@ -441,6 +525,7 @@ export default function AdminDashboard({ user }) {
                 id: b.id,
                 name: b.nombre_identificador,
                 description: b.ubicacion,
+                sucursal_id: b.sucursal_id || null,
                 assignedContactId: b.contacto_id,
                 recordingMode: "schedule",
                 enabled: b.activo,
@@ -454,13 +539,31 @@ export default function AdminDashboard({ user }) {
                 turno_tarde_inicio: b.turno_tarde_inicio,
                 turno_tarde_fin: b.turno_tarde_fin,
                 grabacion_habilitada: b.grabacion_habilitada,
-                en_pausa: b.en_pausa
+                en_pausa: b.en_pausa,
+                duracion_segmento_minutos: b.duracion_segmento_minutos,
+                microfono_asignado: b.microfono_asignado,
+                lista_microfonos: b.lista_microfonos,
+                version_actual: b.version_actual
             }));
             
             // Sort boxes by name alphabetically
             formattedBoxes.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
             
             setBoxConfigs(formattedBoxes);
+            
+            if (sucursalesData && sucursalesData.length === 0) {
+                try {
+                    await createSucursal({ nombre: "Sucursal Central", direccion: "Centro", activa: true });
+                    await createSucursal({ nombre: "Sucursal Norte", direccion: "Norte", activa: true });
+                    const newSucursales = await getSucursales();
+                    setSucursales(newSucursales);
+                } catch (e) {
+                    console.error("Auto-seed failed", e);
+                    setSucursales(sucursalesData);
+                }
+            } else {
+                setSucursales(sucursalesData);
+            }
         } catch (error) {
             console.error("Error loading data:", error);
             if (error.response?.status === 401) {
@@ -536,13 +639,23 @@ export default function AdminDashboard({ user }) {
 
 
     const filteredRecordings = allRecordings.filter(rec => {
-        const matchesSearch =
-            rec.id.toLowerCase().includes(filters.search.toLowerCase()) ||
-            rec.cajero.toLowerCase().includes(filters.search.toLowerCase()) ||
-            rec.caja.toLowerCase().includes(filters.search.toLowerCase());
+        const q = (filters.search || "").toLowerCase().trim();
+        const matchesSearch = !q ||
+            (rec.id && rec.id.toLowerCase().includes(q)) ||
+            (rec.rawId && rec.rawId.toLowerCase().includes(q)) ||
+            (rec.cajero && rec.cajero.toLowerCase().includes(q)) ||
+            (rec.caja && rec.caja.toLowerCase().includes(q));
 
-        const matchesDate = filters.date ? rec.fecha.includes(getEcuadorDateString(filters.date)) : true;
-        const matchesTime = filters.time ? rec.hora.startsWith(filters.time) : true;
+        let matchesDate = true;
+        if (filters.date) {
+            // filters.date comes from <input type="date"> as "YYYY-MM-DD"
+            const expectedDate = filters.date.trim();
+            // rec.fecha is formatted with getEcuadorDateString which is "YYYY-MM-DD"
+            const recEcuadorDate = rec.fecha || (rec.fecha_hora_inicio ? getEcuadorDateString(rec.fecha_hora_inicio) : "");
+            matchesDate = recEcuadorDate === expectedDate;
+        }
+
+        const matchesTime = filters.time ? (rec.hora && rec.hora.startsWith(filters.time)) : true;
 
         return matchesSearch && matchesDate && matchesTime;
     });
@@ -813,10 +926,12 @@ export default function AdminDashboard({ user }) {
         e.preventDefault();
         try {
             if (currentContact) {
-                await updateContact(currentContact.id, contactForm);
+                const payload = { ...contactForm, sucursal_id: contactForm.sucursal_id || null };
+                await updateContact(currentContact.id, payload);
                 alert("Contacto actualizado exitosamente");
             } else {
-                await createContact(contactForm);
+                const payload = { ...contactForm, sucursal_id: contactForm.sucursal_id || null };
+                await createContact(payload);
                 alert("Contacto creado exitosamente");
             }
             const data = await getContacts();
@@ -850,12 +965,60 @@ export default function AdminDashboard({ user }) {
             email: contact.email || "",
             telefono: contact.telefono || "",
             direccion: contact.direccion || "",
-            rol: contact.rol || "Cajero"
+            rol: contact.rol || "Cajero",
+            sucursal_id: contact.sucursal_id || ""
         });
         setShowContactModal(true);
     };
 
+    const openSucursalModal = (sucursal = null) => {
+        if (sucursal) {
+            setCurrentSucursal(sucursal);
+            setSucursalForm({ nombre: sucursal.nombre, direccion: sucursal.direccion || "", activa: sucursal.activa });
+        } else {
+            setCurrentSucursal(null);
+            setSucursalForm({ nombre: "", direccion: "", activa: true });
+        }
+        setShowSucursalModal(true);
+    };
+
+    const handleSaveSucursal = async (e) => {
+        e.preventDefault();
+        try {
+            if (currentSucursal) {
+                await updateSucursal(currentSucursal.id, sucursalForm);
+                await alert({ type: "success", message: "Sucursal actualizada" });
+            } else {
+                await createSucursal(sucursalForm);
+                await alert({ type: "success", message: "Sucursal creada" });
+            }
+            setShowSucursalModal(false);
+            loadData(true);
+        } catch (error) {
+            await alert({ type: "error", message: error.message || "Error al guardar sucursal" });
+        }
+    };
+
+    const handleDeleteSucursal = async (id) => {
+        const isConfirmed = await confirm({
+            title: "¿Estás seguro?",
+            message: "Esta acción eliminará la sucursal permanentemente.",
+            confirmText: "Eliminar",
+            cancelText: "Cancelar"
+        });
+        if (isConfirmed) {
+            try {
+                await deleteSucursal(id);
+                await alert({ type: "success", message: "Sucursal eliminada" });
+                loadData(true);
+            } catch (error) {
+                await alert({ type: "error", message: "Error al eliminar sucursal" });
+            }
+        }
+    };
+
     const handleDeleteContact = async (id) => {
+    
         const isConfirmed = await confirm({
             title: "¿Estás seguro?",
             message: "¿Está seguro de que desea eliminar este contacto?",
@@ -884,23 +1047,24 @@ export default function AdminDashboard({ user }) {
                             <div className="card stat-card">
                                 <div className="stat-icon bg-blue">📦</div>
                                 <div className="stat-info">
-                                    <h3>Cajas Configuradas</h3>
-                                    <p className="value">{boxConfigs.length}</p>
+                                    <h3>Cajas Operativas</h3>
+                                    <p className="value">{boxConfigs.filter(b => b.estado_operativo === 'Operativa' || b.enabled).length} <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: '500' }}>/ {boxConfigs.length}</span></p>
                                 </div>
                             </div>
 
                             <div className="card stat-card">
-                                <div className="stat-icon bg-green">🟢</div>
+                                <div className="stat-icon bg-green">👥</div>
                                 <div className="stat-info">
-                                    <h3>Cajas Activas</h3>
-                                    <p className="value">{boxConfigs.filter(box => box.enabled).length}</p>
+                                    <h3>Personal Cajeros</h3>
+                                    <p className="value">{contacts.filter(c => c.rol?.toLowerCase() === 'cajero').length || users.filter(u => u.rol?.nombre?.toLowerCase() === 'cajero').length}</p>
                                 </div>
                             </div>
+
                             <div className="card stat-card">
-                                <div className="stat-icon bg-orange">👥</div>
+                                <div className="stat-icon bg-orange">🎙️</div>
                                 <div className="stat-info">
-                                    <h3>Cajeros Activos</h3>
-                                    <p className="value">{users.filter(u => u.rol?.nombre?.toLowerCase() === 'cajero' && u.activo).length}</p>
+                                    <h3>Grabaciones Procesadas</h3>
+                                    <p className="value">{allRecordings.length}</p>
                                 </div>
                             </div>
                         </div>
@@ -1179,7 +1343,7 @@ export default function AdminDashboard({ user }) {
                                             </div>
                                             <div className="recordings-list-body" style={{ display: 'flex', flexDirection: 'column' }}>
                                                 {boxConfigs.map((box) => {
-                                                    const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000;
+                                                    const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000 && box.version_actual === "v2.0.0";
                                                     return (
                                                     <div key={box.id} className="recording-row hover-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 2fr) minmax(180px, 1.5fr) minmax(200px, 2fr) 150px', gap: '1rem', padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', alignItems: 'center', transition: 'background-color 0.2s', backgroundColor: 'inherit' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1320,7 +1484,7 @@ export default function AdminDashboard({ user }) {
                                         </div>
                                         <div className="recordings-list-body" style={{ display: 'flex', flexDirection: 'column' }}>
                                             {boxConfigs.map((box) => {
-                                                const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000;
+                                                const isOnline = box.ultima_conexion && (new Date() - new Date(box.ultima_conexion)) < 120000 && box.version_actual === "v2.0.0";
                                                 const currentEstado = box.estado_operativo || 'Operativa';
                                                 const isRecording = currentEstado === "Operativa" ? (box.en_uso || false) : false;
                                                 return (
@@ -1333,10 +1497,21 @@ export default function AdminDashboard({ user }) {
                                                             )}
                                                         </div>
                                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                                            <span className="font-medium" style={{ fontSize: '1.05rem', color: '#1e293b' }}>{box.name}</span>
-                                                            <span style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.2rem' }}>{box.description || "Sin descripción"}</span>
-                                                            <span style={{ fontSize: '0.75rem', color: isRecording ? '#10b981' : isOnline ? '#ea580c' : '#94a3b8', fontWeight: '600' }}>
-                                                                {isRecording ? (box.assignedContactId ? 'Grabando / Transcribiendo' : 'Grabando / No Transcribiendo') : isOnline ? 'Transmisión Activa' : 'Fuera de Línea'}
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                                <span className="font-medium" style={{ fontSize: '1.05rem', color: '#1e293b' }}>{box.name}</span>
+                                                                {box.version_actual && (
+                                                                    <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: '#e2e8f0', color: '#475569', fontWeight: 'bold' }}>
+                                                                        {box.version_actual}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <span style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.2rem' }}>{sucursales.find(s => s.id === box.sucursal_id)?.nombre || box.description || "Sin sucursal asignada"}</span>
+                                                            <span style={{ fontSize: '0.75rem', color: (isOnline && isRecording) ? '#10b981' : isOnline ? '#ea580c' : '#94a3b8', fontWeight: '600' }}>
+                                                                {isOnline 
+                                                                    ? (isRecording 
+                                                                        ? (box.assignedContactId ? 'Grabando / Transcribiendo' : 'Grabando / No Transcribiendo') 
+                                                                        : (box.estado_grabacion === 'pausa' ? 'En Pausa' : 'Transmisión Activa')) 
+                                                                    : 'Fuera de Línea'}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -1397,15 +1572,15 @@ export default function AdminDashboard({ user }) {
                                                                 pillColor = '#166534';
                                                                 pillBg = '#dcfce7';
                                                                 dotColor = '#22c55e';
-                                                                statusText = 'Grabando';
+                                                                statusText = 'Grabando / Transcribiendo';
                                                                 showPulse = true;
-                                                            } else if (grabacionEstado === 'pausa') {
+                                                            } else if (grabacionEstado === 'pausa' || grabacionEstado === 'en_pausa') {
                                                                 pillColor = '#9a3412';
                                                                 pillBg = '#ffedd5';
                                                                 dotColor = '#f97316';
-                                                                statusText = 'Pausa';
+                                                                statusText = 'En Pausa';
                                                                 showPulse = true;
-                                                            } else if (grabacionEstado === 'fuera de horario') {
+                                                            } else if (grabacionEstado === 'fuera de horario' || grabacionEstado === 'fuera_horario') {
                                                                 pillColor = '#475569';
                                                                 pillBg = '#f1f5f9';
                                                                 dotColor = '#64748b';
@@ -1416,7 +1591,7 @@ export default function AdminDashboard({ user }) {
                                                                 dotColor = '#3b82f6';
                                                                 statusText = 'Transmitiendo';
                                                                 showPulse = true;
-                                                            } else if (grabacionEstado === 'apagado') {
+                                                            } else {
                                                                 pillColor = '#991b1b';
                                                                 pillBg = '#fee2e2';
                                                                 dotColor = '#ef4444';
@@ -1521,7 +1696,7 @@ export default function AdminDashboard({ user }) {
                                 >
                                     📒 Contactos
                                 </button>
-                                <button
+                                                                <button
                                     onClick={() => setPersonalViewMode('usuarios')}
                                     style={{
                                         flex: 1, padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none',
@@ -1535,6 +1710,21 @@ export default function AdminDashboard({ user }) {
                                     }}
                                 >
                                     👥 Usuarios
+                                </button>
+                                <button
+                                    onClick={() => setPersonalViewMode('sucursales')}
+                                    style={{
+                                        flex: 1, padding: '0.75rem 1.5rem', borderRadius: '8px', border: 'none',
+                                        background: personalViewMode === 'sucursales' ? 'white' : 'transparent',
+                                        color: personalViewMode === 'sucursales' ? '#ea580c' : '#6b7280',
+                                        fontWeight: personalViewMode === 'sucursales' ? '600' : '500',
+                                        cursor: 'pointer',
+                                        boxShadow: personalViewMode === 'sucursales' ? '0 4px 6px -1px rgba(0, 0, 0, 0.1)' : 'none',
+                                        transition: 'all 0.3s ease', fontSize: '1rem',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem'
+                                    }}
+                                >
+                                    🏢 Sucursales
                                 </button>
                             </div>
                         </div>
@@ -1552,7 +1742,7 @@ export default function AdminDashboard({ user }) {
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => { setContactForm({ nombre: "", apellido: "", email: "", telefono: "", direccion: "", rol: "Cajero" }); setCurrentContact(null); setShowContactModal(true); }}
+                                            onClick={() => { setContactForm({ nombre: "", apellido: "", email: "", telefono: "", direccion: "", rol: "Cajero", sucursal_id: "" }); setCurrentContact(null); setShowContactModal(true); }}
                                             style={{
                                                 padding: '0.65rem 1.25rem', cursor: 'pointer', border: 'none',
                                                 background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
@@ -1697,7 +1887,7 @@ export default function AdminDashboard({ user }) {
                                         </div>
                                     )}
                                 </div>
-                            ) : (
+                            ) : personalViewMode === 'usuarios' ? (
                                 <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
                                     {/* Header Usuarios */}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -1813,6 +2003,113 @@ export default function AdminDashboard({ user }) {
                                         )}
                                     </div>
                                 </div>
+                            ) : (
+                                <div style={{ animation: 'fadeIn 0.4s ease-out' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                        <div>
+                                            <h2 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.25rem 0', letterSpacing: '-0.02em' }}>Sucursales</h2>
+                                            <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b' }}>
+                                                <span style={{ fontWeight: '700', color: '#ea580c' }}>{sucursales.length}</span> sucursales registradas
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => openSucursalModal()}
+                                            style={{
+                                                padding: '0.65rem 1.25rem', cursor: 'pointer', border: 'none',
+                                                background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+                                                color: 'white', borderRadius: '10px', fontWeight: '700', fontSize: '0.9rem',
+                                                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                                boxShadow: '0 4px 12px rgba(249,115,22,0.35)', transition: 'all 0.2s'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(249,115,22,0.45)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(249,115,22,0.35)'; }}
+                                        >
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                                            Nueva Sucursal
+                                        </button>
+                                    </div>
+                                    {/* Lista Sucursales */}
+                                    <div className="recordings-list-container" style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
+                                        <div className="recordings-list-header" style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 2fr) minmax(200px, 1.5fr) minmax(150px, 1fr) 200px', gap: '1rem', padding: '1rem 1.5rem', background: '#fff7ed', borderBottom: '1px solid #fed7aa', color: '#c2410c', fontWeight: '600', fontSize: '0.9rem' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><path d="M9 3v18" /><path d="M15 3v18" /></svg>
+                                                Sucursal
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                                Dirección
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
+                                                Estado
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
+                                                Acciones
+                                            </div>
+                                        </div>
+                                        <div className="recordings-list-body" style={{ display: 'flex', flexDirection: 'column' }}>
+                                            {sucursales.map((s) => (
+                                                <div key={s.id} className="recording-row hover-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 2fr) minmax(200px, 1.5fr) minmax(150px, 1fr) 200px', gap: '1rem', padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', alignItems: 'center', transition: 'background-color 0.2s', backgroundColor: 'inherit' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                        <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, #10b981, #34d399)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 10px rgba(16,185,129,0.3)' }}>
+                                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span className="font-medium" style={{ fontSize: '1rem', color: '#0f172a', fontWeight: '700' }}>
+                                                                {s.nombre}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div style={{ display: 'flex', alignItems: 'center', color: '#475569', fontSize: '0.9rem' }}>
+                                                        {s.direccion || <span style={{ fontStyle: 'italic', color: '#94a3b8' }}>Sin dirección</span>}
+                                                    </div>
+                                                    
+                                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                        {s.activa ? (
+                                                            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.75rem', borderRadius: '999px', background: '#dcfce7', color: '#15803d', fontWeight: '600', border: '1px solid #bbf7d0', display: 'inline-block' }}>
+                                                                Activa
+                                                            </span>
+                                                        ) : (
+                                                            <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.75rem', borderRadius: '999px', background: '#f1f5f9', color: '#64748b', fontWeight: '600', border: '1px solid #e2e8f0', display: 'inline-block' }}>
+                                                                Inactiva
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                                        <button
+                                                            onClick={() => openSucursalModal(s)}
+                                                            style={{ padding: '0.4rem 0.6rem', border: '1px solid #e2e8f0', background: 'white', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', transition: 'all 0.2s', color: '#475569', fontSize: '0.8rem', fontWeight: '600' }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = '#f8fafc'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = 'white'; }}
+                                                        >
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                                                            Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteSucursal(s.id)}
+                                                            title="Eliminar"
+                                                            style={{ padding: '0.4rem 0.6rem', border: '1px solid #fee2e2', background: '#fff1f2', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', color: '#dc2626' }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = '#fecaca'; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = '#fff1f2'; }}
+                                                        >
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {sucursales.length === 0 && (
+                                                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8', background: '#f8fafc' }}>
+                                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏢</div>
+                                                    <p style={{ fontWeight: '600', fontSize: '1rem', margin: '0 0 0.5rem 0' }}>No hay sucursales registradas</p>
+                                                    <p style={{ fontSize: '0.875rem', margin: 0 }}>Haz clic en "Nueva Sucursal" para empezar.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
 
@@ -1901,24 +2198,48 @@ export default function AdminDashboard({ user }) {
                                                     </div>
                                                 </td>
 
-                                                {/* Acción */}
+                                                {/* Acción y Descripción Humana */}
                                                 <td style={{ verticalAlign: 'middle', paddingTop: '1.25rem', paddingBottom: '1.25rem' }}>
-                                                    <span className="status-badge" style={{
-                                                        padding: '0.4rem 0.85rem', borderRadius: '6px',
-                                                        backgroundColor: log.tipo_accion === 'INSERT' ? '#dcfce7' : log.tipo_accion === 'UPDATE' ? '#fef3c7' : log.tipo_accion === 'DELETE' ? '#fee2e2' : '#f3f4f6',
-                                                        color: log.tipo_accion === 'INSERT' ? '#166534' : log.tipo_accion === 'UPDATE' ? '#92400e' : log.tipo_accion === 'DELETE' ? '#991b1b' : '#374151',
-                                                        fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.05em',
-                                                        display: 'inline-block'
-                                                    }}>
-                                                        {log.tipo_accion}
-                                                    </span>
+                                                    {(() => {
+                                                        const human = getHumanLogDescription(log);
+                                                        return (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                                                <span className="status-badge" style={{
+                                                                    padding: '0.35rem 0.75rem', borderRadius: '6px',
+                                                                    backgroundColor: human.accion.bg,
+                                                                    color: human.accion.color,
+                                                                    border: `1px solid ${human.accion.border}`,
+                                                                    fontWeight: '700', fontSize: '0.78rem',
+                                                                    display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+                                                                    width: 'fit-content'
+                                                                }}>
+                                                                    {human.accion.label}
+                                                                </span>
+                                                                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>
+                                                                    {human.resumen}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </td>
 
                                                 {/* Entidad Afectada */}
                                                 <td style={{ verticalAlign: 'middle', paddingTop: '1.25rem', paddingBottom: '1.25rem' }}>
-                                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '500' }}>
-                                                        {log.tipo_accion === 'INSERT' ? 'Creación de registro' : log.tipo_accion === 'UPDATE' ? 'Edición de registro' : log.tipo_accion === 'DELETE' ? 'Eliminación de registro' : 'Acción registrada'} en <strong style={{ textTransform: 'capitalize' }}>{log.tabla_afectada.replace(/_/g, ' ')}</strong>
-                                                    </span>
+                                                    {(() => {
+                                                        const human = getHumanLogDescription(log);
+                                                        return (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                                <span style={{ fontSize: '0.92rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+                                                                    {human.entidad}
+                                                                </span>
+                                                                {human.detalle && (
+                                                                    <span style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: '500' }}>
+                                                                        {human.detalle}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </td>
                                             </tr>
                                         ))}
@@ -2103,9 +2424,14 @@ export default function AdminDashboard({ user }) {
                                                             backgroundColor: log.tipo_accion === 'INSERT' ? '#10b981' : log.tipo_accion === 'UPDATE' ? '#f59e0b' : log.tipo_accion === 'DELETE' ? '#ef4444' : '#64748b'
                                                         }} />
                                                         <div style={{ flex: 1 }}>
-                                                            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#334155', lineHeight: '1.4' }}>
-                                                                <span style={{ fontWeight: '600', color: '#0f172a' }}>{log.usuario_actor ? log.usuario_actor.username : "Sistema"}</span> realizó un <strong style={{ color: log.tipo_accion === 'INSERT' ? '#059669' : log.tipo_accion === 'UPDATE' ? '#d97706' : '#dc2626' }}>{log.tipo_accion}</strong> en {log.tabla_afectada}
-                                                            </p>
+                                                            {(() => {
+                                                                const human = getHumanLogDescription(log);
+                                                                return (
+                                                                    <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#334155', lineHeight: '1.4' }}>
+                                                                        <span style={{ fontWeight: '700', color: '#0f172a' }}>{human.actor}</span> {human.accion.verb} <strong>{human.entidad.toLowerCase()}</strong>{human.detalle}
+                                                                    </p>
+                                                                );
+                                                            })()}
                                                             <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{getEcuadorDateTimeString(log.fecha_accion)}</span>
                                                         </div>
                                                     </div>
@@ -2198,7 +2524,8 @@ export default function AdminDashboard({ user }) {
                             ) : transcriptionData && transcriptionData.length > 0 && transcriptionData[0].segmentos && transcriptionData[0].segmentos.length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                                     {transcriptionData[0].segmentos.map((segmento, idx) => {
-                                        const isCajero = segmento.rol_inferido === 'Cajero' || (segmento.rol_inferido !== 'Usuario' && segmento.hablante === 'SPEAKER_00');
+                                        const speakerName = segmento.hablante || 'SPEAKER_00';
+                                        const isSpeaker0 = speakerName.includes('00');
                                         return (
                                             <div key={idx} style={{
                                                 display: 'flex',
@@ -2212,13 +2539,13 @@ export default function AdminDashboard({ user }) {
                                                     [ {Number(segmento.inicio_segundo).toFixed(2).padStart(5, '0')} - {Number(segmento.fin_segundo).toFixed(2).padStart(5, '0')} ]
                                                 </span>
                                                 <span style={{
-                                                    color: isCajero ? '#0ea5e9' : '#f97316',
+                                                    color: isSpeaker0 ? '#0ea5e9' : '#f97316',
                                                     fontWeight: '700',
                                                     minWidth: '85px',
                                                     flexShrink: 0,
                                                     fontSize: '0.95rem'
                                                 }}>
-                                                    {isCajero ? 'Cajero:' : 'Usuario:'}
+                                                    {speakerName}:
                                                 </span>
                                                 <span style={{
                                                     color: '#334155',
@@ -2876,6 +3203,69 @@ export default function AdminDashboard({ user }) {
                 )
             }
 
+                        {/* SUCURSAL MODAL */}
+            {showSucursalModal && (
+                <div className="modal-overlay" style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', zIndex: 1000
+                }}>
+                    <div className="modal-content" style={{
+                        background: 'white', padding: '2rem', borderRadius: '12px',
+                        width: '90%', maxWidth: '500px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>
+                                {currentSucursal ? "Editar Sucursal" : "Nueva Sucursal"}
+                            </h3>
+                            <button onClick={() => setShowSucursalModal(false)} style={{
+                                background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b'
+                            }}>✕</button>
+                        </div>
+                        <form onSubmit={handleSaveSucursal} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Nombre de Sucursal</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={sucursalForm.nombre}
+                                    onChange={(e) => setSucursalForm({ ...sucursalForm, nombre: e.target.value })}
+                                    required
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Dirección</label>
+                                <textarea
+                                    className="form-input"
+                                    value={sucursalForm.direccion}
+                                    onChange={(e) => setSucursalForm({ ...sucursalForm, direccion: e.target.value })}
+                                    rows="3"
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <input
+                                    type="checkbox"
+                                    id="sucursalActiva"
+                                    checked={sucursalForm.activa}
+                                    onChange={(e) => setSucursalForm({ ...sucursalForm, activa: e.target.checked })}
+                                />
+                                <label htmlFor="sucursalActiva" style={{ margin: 0, cursor: 'pointer', fontWeight: '600' }}>Sucursal Activa</label>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                                <button type="button" className="btn btn-outline" onClick={() => setShowSucursalModal(false)} style={{ padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: 'white', cursor: 'pointer' }}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1rem', borderRadius: '8px', background: '#ea580c', color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600' }}>
+                                    Guardar Sucursal
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* CONTACT MODAL */}
             {
                 showContactModal && (
@@ -2965,6 +3355,23 @@ export default function AdminDashboard({ user }) {
                                         <option value="Administrador">Administrador</option>
                                     </select>
                                 </div>
+                                {contactForm.rol === 'Cajero' && (
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Sucursal Asignada</label>
+                                        <select
+                                            className="form-input"
+                                            value={contactForm.sucursal_id || ""}
+                                            onChange={(e) => setContactForm({ ...contactForm, sucursal_id: e.target.value })}
+                                            required
+                                            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}
+                                        >
+                                            <option value="">-- Seleccionar Sucursal --</option>
+                                            {sucursales.map(s => (
+                                                <option key={s.id} value={s.id}>{s.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
                                     <button type="button" className="btn" onClick={() => setShowContactModal(false)}>Cancelar</button>
                                     <button type="submit" className="btn btn-primary">Guardar</button>
@@ -3069,57 +3476,66 @@ export default function AdminDashboard({ user }) {
                                 <button className="close-btn" onClick={() => setShowBoxModal(false)}>×</button>
                             </div>
                             <form onSubmit={handleCreateBox}>
-                                <div className="form-group">
-                                    <label>Nombre de la Caja</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={boxForm.name}
-                                        onChange={(e) => setBoxForm({ ...boxForm, name: e.target.value })}
-                                        required
-                                    />
+                                <h4 style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', marginBottom: '0.75rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.25rem' }}>Información General</h4>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                        <label>Nombre de la Caja</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={boxForm.name}
+                                            onChange={(e) => setBoxForm({ ...boxForm, name: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Sucursal</label>
+                                        <select
+                                            className="form-input"
+                                            value={boxForm.sucursal_id}
+                                            onChange={(e) => setBoxForm({ ...boxForm, sucursal_id: e.target.value })}
+                                            required
+                                        >
+                                            <option value="">-- Seleccionar Sucursal --</option>
+                                            {sucursales.map(s => (
+                                                <option key={s.id} value={s.id}>{s.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label>Descripción</label>
-                                    <textarea
-                                        className="form-input"
-                                        value={boxForm.description}
-                                        onChange={(e) => setBoxForm({ ...boxForm, description: e.target.value })}
-                                        rows="3"
-                                    />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div className="form-group">
+                                        <label>Cajero Asignado</label>
+                                        <select
+                                            className="form-input"
+                                            value={boxForm.assignedContactId}
+                                            onChange={(e) => setBoxForm({ ...boxForm, assignedContactId: e.target.value })}
+                                        >
+                                            <option value="">-- Sin asignar --</option>
+                                            {contacts.filter(contact => {
+                                                const isAssigned = boxConfigs.some(b => b.assignedContactId === contact.id && b.id !== (currentBox?.id));
+                                                return !isAssigned;
+                                            }).map(contact => (
+                                                <option key={contact.id} value={contact.id}>
+                                                    {contact.nombre} {contact.apellido}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Estado Operativo</label>
+                                        <select
+                                            className="form-input"
+                                            value={boxForm.estado_operativo}
+                                            onChange={(e) => setBoxForm({ ...boxForm, estado_operativo: e.target.value })}
+                                        >
+                                            <option value="Operativa">Operativa</option>
+                                            <option value="Mantenimiento">En Mantenimiento</option>
+                                            <option value="Fuera de Servicio">Fuera de Servicio</option>
+                                        </select>
+                                    </div>
                                 </div>
-                                <div className="form-group">
-                                    <label>Cajero Asignado (Contacto)</label>
-                                    <select
-                                        className="form-input"
-                                        value={boxForm.assignedContactId}
-                                        onChange={(e) => setBoxForm({ ...boxForm, assignedContactId: e.target.value })}
-                                    >
-                                        <option value="">-- Sin asignar --</option>
-                                        {contacts.filter(contact => {
-                                            // Check if contact is already assigned to ANOTHER box
-                                            const isAssigned = boxConfigs.some(b => b.assignedContactId === contact.id && b.id !== (currentBox?.id));
-                                            return !isAssigned;
-                                        }).map(contact => (
-                                            <option key={contact.id} value={contact.id}>
-                                                {contact.nombre} {contact.apellido}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="form-group">
-                                    <label>Estado Operativo</label>
-                                    <select
-                                        className="form-input"
-                                        value={boxForm.estado_operativo}
-                                        onChange={(e) => setBoxForm({ ...boxForm, estado_operativo: e.target.value })}
-                                    >
-                                        <option value="Operativa">Operativa</option>
-                                        <option value="Mantenimiento">En Mantenimiento</option>
-                                        <option value="Fuera de Servicio">Fuera de Servicio</option>
-                                    </select>
-                                </div>
-                                <div className="form-group">
+                                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                                     <label>Motivo o Factor (Opcional)</label>
                                     <textarea
                                         className="form-input"
@@ -3129,6 +3545,8 @@ export default function AdminDashboard({ user }) {
                                         rows="2"
                                     />
                                 </div>
+                                
+                                <h4 style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600', marginTop: '1.5rem', marginBottom: '0.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.25rem' }}>Horarios y Grabación</h4>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                                     <div className="form-group">
@@ -3172,32 +3590,74 @@ export default function AdminDashboard({ user }) {
                                     </div>
                                 </div>
 
-                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ fontSize: '0.85rem', fontWeight: '700' }}>Control de Grabación (Desktop)</label>
-                                    <select
-                                        className="form-input"
-                                        value={
-                                            !boxForm.grabacion_habilitada 
-                                                ? "apagado" 
-                                                : boxForm.en_pausa 
-                                                    ? "pausa" 
-                                                    : "grabando"
-                                        }
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === "grabando") {
-                                                setBoxForm({ ...boxForm, grabacion_habilitada: true, en_pausa: false });
-                                            } else if (val === "pausa") {
-                                                setBoxForm({ ...boxForm, grabacion_habilitada: true, en_pausa: true });
-                                            } else if (val === "apagado") {
-                                                setBoxForm({ ...boxForm, grabacion_habilitada: false, en_pausa: false });
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '0.85rem', fontWeight: '700' }}>Control de Grabación (Desktop)</label>
+                                        <select
+                                            className="form-input"
+                                            value={
+                                                !boxForm.grabacion_habilitada 
+                                                    ? "apagado" 
+                                                    : boxForm.en_pausa 
+                                                        ? "pausa" 
+                                                        : "grabando"
                                             }
-                                        }}
-                                    >
-                                        <option value="grabando">Habilitada (Grabación Activa)</option>
-                                        <option value="pausa">Pausar Grabación (En Pausa)</option>
-                                        <option value="apagado">Apagar Grabación (Deshabilitada)</option>
-                                    </select>
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === "grabando") {
+                                                    setBoxForm({ ...boxForm, grabacion_habilitada: true, en_pausa: false });
+                                                } else if (val === "pausa") {
+                                                    setBoxForm({ ...boxForm, grabacion_habilitada: true, en_pausa: true });
+                                                } else if (val === "apagado") {
+                                                    setBoxForm({ ...boxForm, grabacion_habilitada: false, en_pausa: false });
+                                                }
+                                            }}
+                                        >
+                                            <option value="grabando">Habilitada (Activa)</option>
+                                            <option value="pausa">Pausar Grabación</option>
+                                            <option value="apagado">Deshabilitar Grabación</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label style={{ fontSize: '0.85rem', fontWeight: '700' }}>Tiempo de Grabación (Minutos)</label>
+                                        <select
+                                            className="form-input"
+                                            value={boxForm.duracion_segmento_minutos}
+                                            onChange={(e) => setBoxForm({ ...boxForm, duracion_segmento_minutos: parseInt(e.target.value) || 10 })}
+                                        >
+                                            <option value={10}>10 Minutos</option>
+                                            <option value={20}>20 Minutos</option>
+                                            <option value={30}>30 Minutos</option>
+                                        </select>
+                                        <small style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', display: 'block' }}>
+                                            Cada cuántos minutos se cortará el audio.
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: '700' }}>Micrófono Asignado</label>
+                                    {boxForm.lista_microfonos && boxForm.lista_microfonos.length > 0 ? (
+                                        <select
+                                            className="form-input"
+                                            value={boxForm.microfono_asignado || ""}
+                                            onChange={(e) => setBoxForm({ ...boxForm, microfono_asignado: e.target.value })}
+                                        >
+                                            <option value="">-- Predeterminado / Ninguno --</option>
+                                            {boxForm.lista_microfonos.map((mic, idx) => (
+                                                <option key={idx} value={mic}>{mic}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            placeholder="Nombre del micrófono (opcional)"
+                                            value={boxForm.microfono_asignado || ""}
+                                            onChange={(e) => setBoxForm({ ...boxForm, microfono_asignado: e.target.value })}
+                                        />
+                                    )}
                                 </div>
 
                                 <div className="modal-actions">

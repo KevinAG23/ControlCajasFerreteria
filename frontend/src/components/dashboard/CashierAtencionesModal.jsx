@@ -15,6 +15,7 @@ const IconStar = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="cur
 const IconSmile = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>;
 const IconFilter = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
 const IconCalendar = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+const IconFileText = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>;
 
 // ─── Sentiment config ─────────────────────────────────────────────────────────
 const SENTIMENT = {
@@ -331,6 +332,22 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
         height: inline ? 'auto' : '90vh',
     };
 
+    // Parse executive summary and attitude (handles new and legacy composite text)
+    const rawResumen = analysis?.resumen_ejecutivo || "";
+    let displayActitud = analysis?.actitudes || "";
+    let cleanResumenText = rawResumen;
+
+    if (rawResumen.includes("Actitudes Detectadas:") || rawResumen.includes("Resumen:")) {
+        const actMatch = rawResumen.match(/Actitudes Detectadas:\s*\n*([^\n]+)/i);
+        if (actMatch && actMatch[1] && !displayActitud) {
+            displayActitud = actMatch[1].trim();
+        }
+        const resMatch = rawResumen.match(/Resumen:\s*\n*([\s\S]+)/i);
+        if (resMatch && resMatch[1]) {
+            cleanResumenText = resMatch[1].trim();
+        }
+    }
+
     const innerContent = (
         <div style={containerStyle}>
             <style>{`
@@ -406,14 +423,16 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
                                 {Math.round(score)}
                             </span>
                         </div>
-                        <div style={{ flex: 1 }}>
-                            <h3 style={{ margin: '0 0 0.35rem', color: '#431407', fontSize: '1.2rem', fontWeight: '800' }}>Calificación General</h3>
-                            <p style={{
-                                margin: 0, color: '#7c6a5f', fontSize: '0.85rem', lineHeight: '1.45',
-                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
-                            }} title={analysis.resumen_ejecutivo}>
-                                {analysis.resumen_ejecutivo || "Puntuación consolidada obtenida de los criterios obligatorios y adicionales evaluados por IA."}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <h3 style={{ margin: '0 0 0.35rem', color: '#431407', fontSize: '1.25rem', fontWeight: '800' }}>Calificación General</h3>
+                            <p style={{ margin: '0 0 0.5rem', color: '#7c6a5f', fontSize: '0.9rem', fontWeight: '600' }}>
+                                Cumple {passedEvals} de {totalEvals} criterios evaluados ({Math.round(score)}%)
                             </p>
+                            {analysis.actitudes && (
+                                <div style={{ fontSize: '0.82rem', color: '#9a3412', background: '#ffedd5', padding: '0.4rem 0.85rem', borderRadius: '10px', display: 'inline-block', fontWeight: '700', border: '1px solid #fed7aa' }}>
+                                    Actitud: {analysis.actitudes}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -431,6 +450,103 @@ function AnalysisModal({ analysis, atencion, onClose, inline = false }) {
                                 Tonalidad y actitud del usuario detectada de forma semántica en la interacción.
                             </p>
                         </div>
+                    </div>
+                </div>
+
+                {/* Detailed Analysis & General Summary Card */}
+                <div style={{
+                    background: 'white', border: '1px solid #fed7aa', borderRadius: '24px',
+                    padding: '2rem 2.5rem', boxShadow: '0 10px 25px -4px rgba(59,29,17,0.04)',
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ padding: '0.6rem', borderRadius: '12px', background: '#fff7ed', color: '#ea580c', display: 'flex', alignItems: 'center' }}>
+                                <IconFileText />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#431407', fontSize: '1.25rem', fontWeight: '800' }}>
+                                    Detalle y Calificación General de la Atención
+                                </h3>
+                                <span style={{ fontSize: '0.82rem', color: '#7c6a5f' }}>
+                                    Auditoría integral: calidad de audio, proceso comercial, trato, alertas y recomendaciones
+                                </span>
+                            </div>
+                        </div>
+                        {displayActitud && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fef3c7', padding: '0.45rem 1rem', borderRadius: '12px', border: '1px solid #fde68a' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#92400e', textTransform: 'uppercase' }}>Actitud Detectada:</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#78350f' }}>{displayActitud}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Formatted Sections or Rich Paragraphs */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {cleanResumenText ? (
+                            cleanResumenText.split(/\n\s*\n/).filter(p => p.trim().length > 0).map((paragraph, pIdx) => {
+                                const trimmed = paragraph.trim();
+                                const isAlert = /alerta|crítico|incumplimiento|anomalía|advertencia/i.test(trimmed);
+                                const isAudio = /audio|transcripci[oó]n|fidelidad|ruido|inaudible/i.test(trimmed);
+                                const isConclusion = /conclusi[oó]n|recomendaci[oó]n|sugerencia|veredicto/i.test(trimmed);
+                                const isCommercial = /venta|transacci[oó]n|cobro|precio|producto|factura/i.test(trimmed);
+
+                                let cardBg = '#fdfbf9';
+                                let cardBorder = '#fed7aa';
+                                let headerTitle = null;
+                                let headerBadge = null;
+
+                                if (isAlert) {
+                                    cardBg = '#fffbeb';
+                                    cardBorder = '#f59e0b';
+                                    headerTitle = '⚠️ ALERTA / HALLAZGO DE ATENCIÓN';
+                                    headerBadge = { bg: '#fee2e2', color: '#b91c1c', border: '#fca5a5' };
+                                } else if (isAudio) {
+                                    cardBg = '#f8fafc';
+                                    cardBorder = '#cbd5e1';
+                                    headerTitle = '🎧 CALIDAD DE AUDIO Y TRANSCRIPCIÓN';
+                                    headerBadge = { bg: '#e2e8f0', color: '#334155', border: '#94a3b8' };
+                                } else if (isConclusion) {
+                                    cardBg = '#f0fdf4';
+                                    cardBorder = '#86efac';
+                                    headerTitle = '🎯 CONCLUSIÓN Y RECOMENDACIÓN';
+                                    headerBadge = { bg: '#dcfce7', color: '#15803d', border: '#86efac' };
+                                } else if (isCommercial) {
+                                    cardBg = '#fafaf9';
+                                    cardBorder = '#fed7aa';
+                                    headerTitle = '🛒 DESARROLLO DE LA ATENCIÓN Y VENTA';
+                                    headerBadge = { bg: '#ffedd5', color: '#c2410c', border: '#fed7aa' };
+                                }
+
+                                return (
+                                    <div
+                                        key={pIdx}
+                                        style={{
+                                            background: cardBg,
+                                            border: `1.5px solid ${cardBorder}`,
+                                            borderRadius: '16px',
+                                            padding: '1.25rem 1.5rem',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                            transition: 'transform 0.15s ease'
+                                        }}
+                                    >
+                                        {headerTitle && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: '800', letterSpacing: '0.05em', color: headerBadge.color, background: headerBadge.bg, padding: '0.2rem 0.6rem', borderRadius: '6px', border: `1px solid ${headerBadge.border}` }}>
+                                                    {headerTitle}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div style={{ color: '#334155', fontSize: '0.93rem', lineHeight: '1.75', whiteSpace: 'pre-line' }}>
+                                            {trimmed}
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ color: '#64748b', fontStyle: 'italic', padding: '1rem', textAlign: 'center' }}>
+                                No hay análisis descriptivo disponible para esta atención.
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -929,7 +1045,8 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                     texto: aten.texto_transcripcion,
                     sentimiento: aten.sentimiento_general,
                     calificacion: aten.calificacion_general,
-                    grabacionId: aten.grabacion_id
+                    grabacionId: aten.grabacion_id,
+                    rawDate: aten.fecha_hora_inicio ? new Date(aten.fecha_hora_inicio) : null
                 };
             }));
         } catch (err) { 
@@ -958,6 +1075,8 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
         setLoadingAnalysis(false);
     };
 
+    const [periodFilter, setPeriodFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'WEEK' | 'MONTH'
+
     const filtered = atenciones.filter(a => {
         if (dateFilter && a.date !== dateFilter) return false;
         if (statusFilter !== 'ALL' && a.estado !== statusFilter) return false;
@@ -965,11 +1084,21 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
             if (analysisFilter === 'ANALYZED' && !a.hasAnalysis) return false;
             if (analysisFilter === 'PENDING' && a.hasAnalysis) return false;
         }
+        if (periodFilter !== 'ALL') {
+            if (!a.rawDate) return true;
+            const now = new Date();
+            const diffDays = (now - a.rawDate) / (1000 * 60 * 60 * 24);
+            if (periodFilter === 'TODAY' && diffDays > 1) return false;
+            if (periodFilter === 'WEEK' && diffDays > 7) return false;
+            if (periodFilter === 'MONTH' && diffDays > 30) return false;
+        }
         return true;
     });
 
-    const completadas = atenciones.filter(a => a.estado === 'COMPLETADA').length;
-    const conAnalisis = atenciones.filter(a => a.hasAnalysis).length;
+    const completadas = filtered.filter(a => a.estado === 'COMPLETADA').length;
+    const conAnalisis = filtered.filter(a => a.hasAnalysis).length;
+    const scores = filtered.filter(a => a.calificacion !== null && a.calificacion !== undefined).map(a => a.calificacion);
+    const avgScore = scores.length > 0 ? Math.round(scores.reduce((sum, v) => sum + v, 0) / scores.length) : null;
 
     if (!cashier) return null;
 
@@ -1049,8 +1178,10 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                     {/* Stats chips */}
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                         {[
+                            { label: 'Atenciones', value: filtered.length, color: '#38bdf8' },
                             { label: 'Completadas', value: completadas, color: '#22c55e' },
                             { label: 'Con Análisis', value: conAnalisis, color: '#fb923c' },
+                            ...(avgScore !== null ? [{ label: 'Promedio', value: `${avgScore}/100`, color: '#eab308' }] : []),
                         ].map(s => (
                             <div key={s.label} style={{
                                 background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)',
@@ -1058,7 +1189,7 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                                 backdropFilter: 'blur(8px)',
                             }}>
                                 <div style={{ fontSize: '1.4rem', fontWeight: '900', color: 'white', lineHeight: 1 }}>{s.value}</div>
-                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.6)', marginTop: '0.2rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                                <div style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.7)', marginTop: '0.2rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
                             </div>
                         ))}
                         <button onClick={onClose} style={{
@@ -1130,6 +1261,26 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
                                 border: `1.5px solid ${analysisFilter === val ? '#ea580c' : '#e2e8f0'}`,
                                 background: analysisFilter === val ? '#ea580c' : 'white',
                                 color: analysisFilter === val ? 'white' : '#64748b',
+                            }}>
+                            {label}
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ width: '1px', height: '20px', background: '#e2e8f0', flexShrink: 0 }} />
+
+                {/* Period filters (Día / Semana / Mes) */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: '700', color: '#64748b', marginRight: '0.2rem' }}>Periodo:</span>
+                    {[['ALL','Todo'],['TODAY','Hoy'],['WEEK','Semana'],['MONTH','Mes']].map(([val, label]) => (
+                        <button key={val} className={`filter-btn ${periodFilter === val ? 'active' : ''}`}
+                            onClick={() => setPeriodFilter(val)}
+                            style={{
+                                padding: '0.35rem 0.75rem', borderRadius: '10px', fontSize: '0.78rem',
+                                fontWeight: periodFilter === val ? '700' : '500', cursor: 'pointer',
+                                border: `1.5px solid ${periodFilter === val ? '#0284c7' : '#e2e8f0'}`,
+                                background: periodFilter === val ? '#0284c7' : 'white',
+                                color: periodFilter === val ? 'white' : '#64748b',
                             }}>
                             {label}
                         </button>
@@ -1323,3 +1474,4 @@ export default function CashierAtencionesModal({ cashier, onClose, inline = fals
         </div>
     );
 }
+

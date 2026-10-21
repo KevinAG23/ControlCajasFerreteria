@@ -1,6 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Threading;
+using System.Threading;
 using Microsoft.Win32;
 using CajaRecorderAgent.Services;
 using CajaRecorderAgent.Views;
@@ -9,8 +10,20 @@ namespace CajaRecorderAgent;
 
 public partial class App : Application
 {
+    private static Mutex? _mutex = null;
+
     protected override void OnStartup(StartupEventArgs e)
     {
+        const string appName = "Global\\CajaRecorderAgent_Unique_Mutex_Final_v6";
+        _mutex = new Mutex(true, appName, out bool createdNew);
+
+        if (!createdNew)
+        {
+            // La aplicación ya está corriendo. Forzamos salida inmediata a nivel de sistema (sin interfaz).
+            Environment.Exit(0);
+            return;
+        }
+
         base.OnStartup(e);
 
         this.DispatcherUnhandledException += App_DispatcherUnhandledException;

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getEcuadorDateString } from '../../utils/date';
 
 // AVATAR PALETTES FOR PROFESSIONAL GRADIENTS
 const AVATAR_PALETTES = [
@@ -254,14 +255,47 @@ export default function CashierList({ contacts = [], users = [], boxes = [], rec
 
     const [search, setSearch] = useState('');
     const [focused, setFocused] = useState(false);
+    const [periodFilter, setPeriodFilter] = useState('ALL'); // 'ALL' | 'TODAY' | 'WEEK' | 'MONTH'
+    const [dateFilter, setDateFilter] = useState(''); // Specific date picker
+
+    // Filter recordings by selected period / date for calculating active stats
+    const effectiveRecordings = React.useMemo(() => {
+        return recordings.filter(rec => {
+            const recDateStr = rec.fecha || (rec.fecha_hora_inicio ? getEcuadorDateString(rec.fecha_hora_inicio) : '');
+            if (dateFilter) {
+                return recDateStr === dateFilter;
+            }
+            if (periodFilter === 'ALL') return true;
+            if (!rec.fecha_hora_inicio) return true;
+
+            const now = new Date();
+            const recDate = new Date(rec.fecha_hora_inicio);
+            const diffDays = (now - recDate) / (1000 * 60 * 60 * 24);
+
+            if (periodFilter === 'TODAY') return diffDays <= 1;
+            if (periodFilter === 'WEEK') return diffDays <= 7;
+            if (periodFilter === 'MONTH') return diffDays <= 30;
+            return true;
+        });
+    }, [recordings, periodFilter, dateFilter]);
 
     const filtered = cashiers.filter(u => {
         const q = search.toLowerCase();
-        return (
+        const matchesSearch = (
             u.username?.toLowerCase().includes(q) ||
             u.contacto?.nombre?.toLowerCase().includes(q) ||
             u.contacto?.apellido?.toLowerCase().includes(q)
         );
+
+        if (!matchesSearch) return false;
+
+        // If a specific period or date filter is active, check if cashier has activity or matches
+        if (periodFilter !== 'ALL' || dateFilter) {
+            const hasActivity = effectiveRecordings.some(r => r.contacto_id === u.id || (u.user_id && r.usuario_id === u.user_id));
+            return hasActivity;
+        }
+
+        return true;
     });
 
     const total = cashiers.length;
@@ -397,6 +431,66 @@ export default function CashierList({ contacts = [], users = [], boxes = [], rec
                     )}
                 </div>
 
+                {/* Period Selector (Hoy, Semana, Mes) & Date Picker */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', background: 'white', border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '0.2rem', gap: '0.2rem' }}>
+                        {[
+                            { key: 'ALL', label: 'Todo' },
+                            { key: 'TODAY', label: 'Hoy' },
+                            { key: 'WEEK', label: 'Semana' },
+                            { key: 'MONTH', label: 'Mes' },
+                        ].map(p => (
+                            <button
+                                key={p.key}
+                                onClick={() => { setPeriodFilter(p.key); setDateFilter(''); }}
+                                style={{
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '0.4rem 0.75rem',
+                                    fontSize: '0.78rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    background: periodFilter === p.key && !dateFilter ? '#ea580c' : 'transparent',
+                                    color: periodFilter === p.key && !dateFilter ? 'white' : '#64748b',
+                                    transition: 'all 0.15s'
+                                }}
+                            >
+                                {p.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <input
+                        type="date"
+                        value={dateFilter}
+                        onChange={e => { setDateFilter(e.target.value); setPeriodFilter('CUSTOM'); }}
+                        style={{
+                            padding: '0.45rem 0.75rem',
+                            borderRadius: '12px',
+                            border: '1.5px solid #e2e8f0',
+                            background: 'white',
+                            fontSize: '0.82rem',
+                            color: '#334155',
+                            outline: 'none',
+                            fontFamily: 'inherit'
+                        }}
+                    />
+                    {dateFilter && (
+                        <button
+                            onClick={() => { setDateFilter(''); setPeriodFilter('ALL'); }}
+                            style={{
+                                background: '#f1f5f9', border: 'none', borderRadius: '50%',
+                                width: '24px', height: '24px', cursor: 'pointer',
+                                color: '#64748b', fontSize: '0.75rem', display: 'flex',
+                                alignItems: 'center', justifyContent: 'center'
+                            }}
+                            title="Limpiar fecha"
+                        >
+                            ✕
+                        </button>
+                    )}
+                </div>
+
                 {/* Counter */}
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <div style={{
@@ -447,7 +541,7 @@ export default function CashierList({ contacts = [], users = [], boxes = [], rec
                             key={user.id}
                             user={user}
                             index={i}
-                            recordings={recordings}
+                            recordings={effectiveRecordings}
                             onViewAtenciones={onViewAtenciones}
                         />
                     ))}

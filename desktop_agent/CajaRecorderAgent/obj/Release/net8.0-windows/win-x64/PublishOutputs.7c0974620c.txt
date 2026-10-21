@@ -1,6 +1,0 @@
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\publish_new\D3DCompiler_47_cor3.dll
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\publish_new\PenImc_cor3.dll
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\publish_new\PresentationNative_cor3.dll
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\publish_new\vcruntime140_cor3.dll
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\publish_new\wpfgfx_cor3.dll
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\publish_new\CajaRecorderAgent.exe

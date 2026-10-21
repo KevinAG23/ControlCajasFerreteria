@@ -17,6 +17,42 @@ def sanitize_username(name: str) -> str:
     n = re.sub(r'[^a-z0-9_]', '_', n)
     return re.sub(r'_+', '_', n).strip('_')
 
+# ---- SUCURSALES ----
+async def get_sucursales(db: AsyncSession, skip: int = 0, limit: int = 100):
+    result = await db.execute(select(models.Sucursal).offset(skip).limit(limit))
+    return result.scalars().all()
+
+async def create_sucursal(db: AsyncSession, sucursal: schemas.SucursalCreate):
+    db_sucursal = models.Sucursal(**sucursal.model_dump())
+    db.add(db_sucursal)
+    await db.commit()
+    await db.refresh(db_sucursal)
+    return db_sucursal
+
+async def update_sucursal(db: AsyncSession, sucursal_id: UUID, sucursal: schemas.SucursalUpdate):
+    query = select(models.Sucursal).where(models.Sucursal.id == sucursal_id)
+    result = await db.execute(query)
+    db_sucursal = result.scalars().first()
+    if not db_sucursal:
+        return None
+    for k, v in sucursal.model_dump(exclude_unset=True).items():
+        setattr(db_sucursal, k, v)
+    await db.commit()
+    await db.refresh(db_sucursal)
+    return db_sucursal
+
+async def delete_sucursal(db: AsyncSession, sucursal_id: UUID):
+    # Safe delete: Only delete if no associated boxes/contacts
+    contactos = await db.execute(select(models.Contacto).where(models.Contacto.sucursal_id == sucursal_id))
+    cajas = await db.execute(select(models.Caja).where(models.Caja.sucursal_id == sucursal_id))
+    if contactos.scalars().first() or cajas.scalars().first():
+        raise ValueError("No se puede eliminar la sucursal porque tiene contactos o cajas asociadas.")
+        
+    query = delete(models.Sucursal).where(models.Sucursal.id == sucursal_id)
+    result = await db.execute(query)
+    await db.commit()
+    return result.rowcount > 0
+
 async def auto_create_usuario_for_contacto(db: AsyncSession, contact: models.Contacto):
     if not contact.rol or contact.rol.lower() not in ["cajero", "administrador"]:
         return None
@@ -221,13 +257,10 @@ async def update_caja(db: AsyncSession, caja_id: UUID, caja: schemas.CajaUpdate)
                 if old_user:
                     old_user.en_uso = False
             if new_contacto_id:
-                db_caja.en_uso = True
                 res_u = await db.execute(select(models.Usuario).where(models.Usuario.contacto_id == new_contacto_id))
                 new_user = res_u.scalars().first()
                 if new_user:
                     new_user.en_uso = True
-            else:
-                db_caja.en_uso = False
                 
         await db.commit()
         await db.refresh(db_caja)
@@ -247,7 +280,12 @@ async def delete_caja(db: AsyncSession, caja_id: UUID):
 
 # ---- CATEGORIAS PREGUNTAS ----
 async def get_categorias_preguntas(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.CategoriaPregunta).offset(skip).limit(limit))
+    result = await db.execute(
+        select(models.CategoriaPregunta)
+        .order_by(models.CategoriaPregunta.activo.desc(), models.CategoriaPregunta.nombre.asc())
+        .offset(skip)
+        .limit(limit)
+    )
     return result.scalars().all()
 
 async def create_categoria_pregunta(db: AsyncSession, categoria: schemas.CategoriaPreguntaCreate):
@@ -270,8 +308,12 @@ async def update_categoria_pregunta(db: AsyncSession, categoria_id: UUID, catego
     return db_categoria
 
 async def delete_categoria_pregunta(db: AsyncSession, categoria_id: UUID):
-    query = delete(models.CategoriaPregunta).where(models.CategoriaPregunta.id == categoria_id)
-    await db.execute(query)
+    res = await db.execute(select(models.CatalogoPreguntas.id).where(models.CatalogoPreguntas.categoria_id == categoria_id))
+    preg_ids = res.scalars().all()
+    if preg_ids:
+        await db.execute(delete(models.RespuestaEvaluacion).where(models.RespuestaEvaluacion.pregunta_id.in_(preg_ids)))
+        await db.execute(delete(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id.in_(preg_ids)))
+    await db.execute(delete(models.CategoriaPregunta).where(models.CategoriaPregunta.id == categoria_id))
     await db.commit()
 
 # ---- CATALOGO PREGUNTAS ----
@@ -279,6 +321,7 @@ async def get_catalogo_preguntas(db: AsyncSession, skip: int = 0, limit: int = 1
     result = await db.execute(
         select(models.CatalogoPreguntas)
         .options(joinedload(models.CatalogoPreguntas.categoria))
+        .order_by(models.CatalogoPreguntas.activo.desc(), models.CatalogoPreguntas.id)
         .offset(skip)
         .limit(limit)
     )
@@ -309,8 +352,8 @@ async def update_catalogo_pregunta(db: AsyncSession, pregunta_id: UUID, pregunta
     return db_pregunta
 
 async def delete_catalogo_pregunta(db: AsyncSession, pregunta_id: UUID):
-    query = delete(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id == pregunta_id)
-    await db.execute(query)
+    await db.execute(delete(models.RespuestaEvaluacion).where(models.RespuestaEvaluacion.pregunta_id == pregunta_id))
+    await db.execute(delete(models.CatalogoPreguntas).where(models.CatalogoPreguntas.id == pregunta_id))
     await db.commit()
 
 # ---- GRABACIONES ----
