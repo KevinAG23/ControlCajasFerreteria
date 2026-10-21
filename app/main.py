@@ -119,9 +119,12 @@ async def startup_event():
                 q_whisperx = Queue("whisperx", connection=redis_conn)
                 q_analysis = Queue("analysis", connection=redis_conn)
                 
-                # 1. Reprocess FAILED_EXTRACT
+                # 1. Reprocess FAILED_EXTRACT (SOLO últimas 24h, máx 10)
                 res_failed_ext = await conn.execute(text(
-                    "SELECT id FROM public.grabaciones WHERE estado_proceso = 'FAILED_EXTRACT'"
+                    "SELECT id FROM public.grabaciones "
+                    "WHERE estado_proceso = 'FAILED_EXTRACT' "
+                    "AND created_at >= NOW() - INTERVAL '24 hours' "
+                    "ORDER BY created_at DESC LIMIT 10"
                 ))
                 for r in res_failed_ext.fetchall():
                     gid = str(r[0])
@@ -134,11 +137,14 @@ async def startup_event():
                         ttl=3600,
                         job_timeout=600,
                     )
-                    logging.info(f"Auto-queued analysis for FAILED_EXTRACT recording: {gid}")
+                    logging.info(f"Auto-queued analysis for recent FAILED_EXTRACT recording: {gid}")
                     
-                # 2. Reprocess FAILED
+                # 2. Reprocess FAILED (SOLO últimas 24h, máx 10)
                 res_failed = await conn.execute(text(
-                    "SELECT id, fecha_hora_inicio FROM public.grabaciones WHERE estado_proceso = 'FAILED'"
+                    "SELECT id, fecha_hora_inicio FROM public.grabaciones "
+                    "WHERE estado_proceso = 'FAILED' "
+                    "AND created_at >= NOW() - INTERVAL '24 hours' "
+                    "ORDER BY created_at DESC LIMIT 10"
                 ))
                 for r in res_failed.fetchall():
                     gid = str(r[0])
@@ -154,29 +160,34 @@ async def startup_event():
                             ttl=3600,
                             job_timeout=600,
                         )
-                        logging.info(f"Auto-queued analysis for FAILED recording (has transcript): {gid}")
+                        logging.info(f"Auto-queued analysis for recent FAILED recording: {gid}")
                     elif dt_start:
                         yyyymmdd = dt_start.strftime("%Y%m%d")
                         incoming_path = f"/app/storage/incoming/{yyyymmdd}/{gid}.wav"
-                        await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'ENHANCE_QUEUED' WHERE id = :id"), {"id": gid})
-                        q_enhance.enqueue(
-                            "rq_workers.enhance_worker.enhance_job",
-                            gid,
-                            incoming_path,
-                            yyyymmdd,
-                            job_id=gid,
-                            result_ttl=3600,
-                            ttl=3600,
-                            job_timeout=600,
-                        )
-                        logging.info(f"Auto-queued enhance for FAILED recording (no transcript): {gid}")
+                        if os.path.exists(incoming_path):
+                            await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'ENHANCE_QUEUED' WHERE id = :id"), {"id": gid})
+                            q_enhance.enqueue(
+                                "rq_workers.enhance_worker.enhance_job",
+                                gid,
+                                incoming_path,
+                                yyyymmdd,
+                                job_id=gid,
+                                result_ttl=3600,
+                                ttl=3600,
+                                job_timeout=600,
+                            )
+                            logging.info(f"Auto-queued enhance for recent FAILED recording: {gid}")
+                        else:
+                            await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'FAILED_NOT_FOUND' WHERE id = :id"), {"id": gid})
                         
-                # 3. Reprocess Stuck jobs (> 15 minutes)
+                # 3. Reprocess Stuck jobs (> 15 minutes y SOLO dentro de últimas 24h, máx 15)
                 res_stuck = await conn.execute(text("""
                     SELECT id, estado_proceso, fecha_hora_inicio 
                     FROM public.grabaciones 
                     WHERE estado_proceso IN ('ENHANCE_QUEUED', 'ENHANCING', 'TRANSCRIBING', 'EXTRACTING', 'WHISPERX_QUEUED')
+                      AND created_at >= NOW() - INTERVAL '24 hours'
                       AND created_at < NOW() - INTERVAL '15 minutes'
+                    ORDER BY created_at DESC LIMIT 15
                 """))
                 for r in res_stuck.fetchall():
                     gid = str(r[0])
@@ -187,18 +198,21 @@ async def startup_event():
                     
                     if estado in ('ENHANCE_QUEUED', 'ENHANCING'):
                         incoming_path = f"/app/storage/incoming/{yyyymmdd}/{gid}.wav"
-                        await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'ENHANCE_QUEUED' WHERE id = :id"), {"id": gid})
-                        q_enhance.enqueue(
-                            "rq_workers.enhance_worker.enhance_job",
-                            gid,
-                            incoming_path,
-                            yyyymmdd,
-                            job_id=gid,
-                            result_ttl=3600,
-                            ttl=3600,
-                            job_timeout=600,
-                        )
-                        logging.info(f"Auto-queued stuck enhance job: {gid}")
+                        if os.path.exists(incoming_path):
+                            await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'ENHANCE_QUEUED' WHERE id = :id"), {"id": gid})
+                            q_enhance.enqueue(
+                                "rq_workers.enhance_worker.enhance_job",
+                                gid,
+                                incoming_path,
+                                yyyymmdd,
+                                job_id=gid,
+                                result_ttl=3600,
+                                ttl=3600,
+                                job_timeout=600,
+                            )
+                            logging.info(f"Auto-queued stuck enhance job: {gid}")
+                        else:
+                            await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'FAILED_NOT_FOUND' WHERE id = :id"), {"id": gid})
                     elif estado in ('TRANSCRIBING', 'WHISPERX_QUEUED'):
                         await conn.execute(text("UPDATE public.grabaciones SET estado_proceso = 'WHISPERX_QUEUED' WHERE id = :id"), {"id": gid})
                         q_whisperx.enqueue(

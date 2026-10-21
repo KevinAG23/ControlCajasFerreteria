@@ -15,7 +15,7 @@ if DATABASE_URL.startswith("postgresql+asyncpg://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 print("=" * 60)
-print("=== REPROCESADOR DE ANÁLISIS PENDIENTES Y FALLIDOS ===")
+print("=== REPROCESADOR CONTROLADO DE ANÁLISIS RECIENTES ===")
 print("=" * 60)
 
 try:
@@ -28,12 +28,12 @@ except Exception as e:
 
 q_analysis = Queue("analysis", connection=redis_conn)
 
-# 1. Reintentar trabajos fallidos en la cola 'analysis' de RQ
+# 1. Reintentar trabajos fallidos en la cola 'analysis' de RQ (máximo los últimos 20)
 failed_registry = FailedJobRegistry("analysis", connection=redis_conn)
 failed_ids = failed_registry.get_job_ids()
 print(f"[*] Trabajos en registro de fallidos de cola 'analysis': {len(failed_ids)}")
 requeued_count = 0
-for jid in failed_ids:
+for jid in failed_ids[:20]:
     try:
         failed_registry.requeue(jid)
         requeued_count += 1
@@ -41,13 +41,12 @@ for jid in failed_ids:
         print(f"    - No se pudo reenviar {jid}: {e}")
 print(f"[OK] {requeued_count} trabajos reencolados desde FailedJobRegistry.\n")
 
-# 2. Conectar a PostgreSQL para sanear duplicados y buscar atenciones sin análisis
+# 2. Conectar a PostgreSQL para sanear duplicados y encolar SOLO atenciones recientes
 if DATABASE_URL:
     try:
         engine = create_engine(DATABASE_URL, pool_pre_ping=True)
         with engine.connect() as conn:
             # 2.1 Limpiar atenciones duplicadas exactas (mismo grabacion_id, misma hora inicio, misma duracion)
-            # Conservamos la que tenga análisis, o la más antigua si ninguna tiene
             dup_del_query = text("""
                 DELETE FROM public.atenciones a
                 USING public.atenciones b
@@ -61,16 +60,21 @@ if DATABASE_URL:
             conn.commit()
             print(f"[OK] {del_result.rowcount} atenciones duplicadas limpiadas de la base de datos.")
 
-            # 2.2 Buscar TODAS las atenciones que no tienen registro en analisis_general
+            # 2.2 Buscar atenciones RECIENTES (últimas 72 horas) con contenido real que aún no tienen análisis
+            # Limitado estrictamente a 50 para evitar consumo excesivo de tokens y colas masivas
             rows = conn.execute(text("""
                 SELECT a.id::text, a.grabacion_id::text, a.estado
                 FROM public.atenciones a
                 LEFT JOIN public.analisis_general ag ON a.id = ag.atencion_id
                 WHERE ag.id IS NULL
-                ORDER BY a.created_at ASC
+                  AND a.created_at >= NOW() - INTERVAL '3 days'
+                  AND (a.duracion_segundos IS NULL OR a.duracion_segundos >= 15)
+                  AND LENGTH(COALESCE(a.texto_transcripcion, '')) >= 30
+                ORDER BY a.created_at DESC
+                LIMIT 50
             """)).fetchall()
             
-            print(f"[*] Atenciones totales sin análisis en BD: {len(rows)}")
+            print(f"[*] Atenciones recientes pendientes de análisis (máx 50): {len(rows)}")
             enqueued_atenciones = 0
             for r in rows:
                 aten_id = r[0]
@@ -86,18 +90,21 @@ if DATABASE_URL:
                         job_timeout=600,
                     )
                     enqueued_atenciones += 1
-            print(f"[OK] {enqueued_atenciones} evaluaciones de atenciones encoladas correctamente.\n")
+            print(f"[OK] {enqueued_atenciones} evaluaciones de atenciones encoladas de forma controlada.\n")
             
-            # 2.3 Buscar grabaciones con transcripción pendientes de extracción
+            # 2.3 Buscar grabaciones RECIENTES con transcripción pendientes de extracción (máx 15)
             grab_rows = conn.execute(text("""
                 SELECT g.id::text
                 FROM public.grabaciones g
                 JOIN public.transcripciones t ON g.id = t.grabacion_id
-                WHERE g.estado_proceso IN ('FAILED_EXTRACT', 'FAILED', 'ANALYZING', 'EXTRACTING')
-                   OR NOT EXISTS (SELECT 1 FROM public.atenciones WHERE grabacion_id = g.id)
+                WHERE (g.estado_proceso IN ('FAILED_EXTRACT', 'FAILED', 'ANALYZING', 'EXTRACTING')
+                   OR NOT EXISTS (SELECT 1 FROM public.atenciones WHERE grabacion_id = g.id))
+                  AND g.created_at >= NOW() - INTERVAL '3 days'
+                ORDER BY g.created_at DESC
+                LIMIT 15
             """)).fetchall()
             
-            print(f"[*] Grabaciones con transcripción pendientes de extracción: {len(grab_rows)}")
+            print(f"[*] Grabaciones recientes pendientes de extracción (máx 15): {len(grab_rows)}")
             enqueued_grab = 0
             for gr in grab_rows:
                 gid = gr[0]
@@ -119,7 +126,6 @@ if DATABASE_URL:
 
 print("=" * 60)
 print("=== PROCESO COMPLETADO ===")
-print("Los workers de 'worker_analysis' procesarán los trabajos pendientes con la nueva versión.")
-print("Puedes monitorear el avance ejecutando:")
-print("  python monitor_queues.py")
+print("Monitorea el avance con: python monitor_queues.py")
+print("Para vaciar colas si lo requieres: python clean_queue.py")
 print("=" * 60)
