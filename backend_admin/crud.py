@@ -1,3 +1,4 @@
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import update, delete, func
@@ -18,8 +19,13 @@ def sanitize_username(name: str) -> str:
     return re.sub(r'_+', '_', n).strip('_')
 
 # ---- SUCURSALES ----
-async def get_sucursales(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Sucursal).offset(skip).limit(limit))
+async def get_sucursales(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = select(models.Sucursal)
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def create_sucursal(db: AsyncSession, sucursal: schemas.SucursalCreate):
@@ -113,8 +119,13 @@ async def auto_create_usuario_for_contacto(db: AsyncSession, contact: models.Con
     return new_user
 
 # ---- CONTACTOS ----
-async def get_contactos(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(select(models.Contacto).offset(skip).limit(limit))
+async def get_contactos(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = select(models.Contacto)
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def create_contacto(db: AsyncSession, contacto: schemas.ContactoCreate, user_id: UUID = None):
@@ -152,13 +163,16 @@ async def delete_contacto(db: AsyncSession, contacto_id: UUID):
     await db.commit()
 
 # ---- USUARIOS ----
-async def get_usuarios(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(
+async def get_usuarios(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = (
         select(models.Usuario)
         .options(selectinload(models.Usuario.rol), selectinload(models.Usuario.contacto))
-        .offset(skip)
-        .limit(limit)
     )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def create_usuario(db: AsyncSession, usuario: schemas.UsuarioCreate, creator_id: UUID = None):
@@ -207,13 +221,16 @@ async def delete_usuario(db: AsyncSession, usuario_id: UUID):
     await db.commit()
 
 # ---- CAJAS ----
-async def get_cajas(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(
+async def get_cajas(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = (
         select(models.Caja)
         .options(selectinload(models.Caja.contacto))
-        .offset(skip)
-        .limit(limit)
     )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def create_caja(db: AsyncSession, caja: schemas.CajaCreate):
@@ -279,13 +296,16 @@ async def delete_caja(db: AsyncSession, caja_id: UUID):
     await db.commit()
 
 # ---- CATEGORIAS PREGUNTAS ----
-async def get_categorias_preguntas(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(
+async def get_categorias_preguntas(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = (
         select(models.CategoriaPregunta)
         .order_by(models.CategoriaPregunta.activo.desc(), models.CategoriaPregunta.nombre.asc())
-        .offset(skip)
-        .limit(limit)
     )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def create_categoria_pregunta(db: AsyncSession, categoria: schemas.CategoriaPreguntaCreate):
@@ -317,14 +337,17 @@ async def delete_categoria_pregunta(db: AsyncSession, categoria_id: UUID):
     await db.commit()
 
 # ---- CATALOGO PREGUNTAS ----
-async def get_catalogo_preguntas(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(
+async def get_catalogo_preguntas(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = (
         select(models.CatalogoPreguntas)
         .options(joinedload(models.CatalogoPreguntas.categoria))
         .order_by(models.CatalogoPreguntas.activo.desc(), models.CatalogoPreguntas.id)
-        .offset(skip)
-        .limit(limit)
     )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def create_catalogo_pregunta(db: AsyncSession, pregunta: schemas.CatalogoPreguntaCreate):
@@ -357,8 +380,8 @@ async def delete_catalogo_pregunta(db: AsyncSession, pregunta_id: UUID):
     await db.commit()
 
 # ---- GRABACIONES ----
-async def get_grabaciones(db: AsyncSession, skip: int = 0, limit: int = 100):
-    result = await db.execute(
+async def get_grabaciones(db: AsyncSession, skip: int = 0, limit: Optional[int] = None):
+    query = (
         select(models.Grabacion)
         .options(
             selectinload(models.Grabacion.usuario).selectinload(models.Usuario.contacto), 
@@ -368,12 +391,16 @@ async def get_grabaciones(db: AsyncSession, skip: int = 0, limit: int = 100):
             selectinload(models.Grabacion.analisis),
         )
         .order_by(models.Grabacion.fecha_hora_inicio.desc())
-        .offset(skip).limit(limit)
     )
+    if skip:
+        query = query.offset(skip)
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
-async def get_grabaciones_by_caja(db: AsyncSession, caja_id: UUID, limit: int = 100):
-    result = await db.execute(
+async def get_grabaciones_by_caja(db: AsyncSession, caja_id: UUID, limit: Optional[int] = None):
+    query = (
         select(models.Grabacion)
         .where(models.Grabacion.caja_id == caja_id)
         .options(
@@ -384,12 +411,14 @@ async def get_grabaciones_by_caja(db: AsyncSession, caja_id: UUID, limit: int = 
             selectinload(models.Grabacion.analisis),
         )
         .order_by(models.Grabacion.fecha_hora_inicio.desc())
-        .limit(limit)
     )
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
-async def get_grabaciones_by_usuario(db: AsyncSession, usuario_id: UUID, limit: int = 100):
-    result = await db.execute(
+async def get_grabaciones_by_usuario(db: AsyncSession, usuario_id: UUID, limit: Optional[int] = None):
+    query = (
         select(models.Grabacion)
         .where((models.Grabacion.usuario_id == usuario_id) | (models.Grabacion.contacto_id == usuario_id))
         .options(
@@ -400,8 +429,10 @@ async def get_grabaciones_by_usuario(db: AsyncSession, usuario_id: UUID, limit: 
             selectinload(models.Grabacion.analisis),
         )
         .order_by(models.Grabacion.fecha_hora_inicio.desc())
-        .limit(limit)
     )
+    if limit is not None and limit > 0:
+        query = query.limit(limit)
+    result = await db.execute(query)
     return result.scalars().all()
 
 async def get_grabacion(db: AsyncSession, grabacion_id: UUID):

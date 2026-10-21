@@ -545,8 +545,18 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
                 {"gid": grabacion_id, "res": resumen_gr, "sent": sentimiento_gr, "fa": utcnow()}
             )
         
+        # Eliminar atenciones y análisis previos de esta grabación para evitar duplicados en reintentos o reprocesamientos
+        prev_atenciones = db.execute(
+            text("SELECT id FROM public.atenciones WHERE grabacion_id=CAST(:gid AS uuid)"),
+            {"gid": grabacion_id}
+        ).fetchall()
+        for pa in prev_atenciones:
+            db.execute(text("DELETE FROM public.analisis_general WHERE atencion_id=CAST(:aid AS uuid)"), {"aid": pa[0]})
+        db.execute(text("DELETE FROM public.atenciones WHERE grabacion_id=CAST(:gid AS uuid)"), {"gid": grabacion_id})
+
         # We will delete the previous EN_PROCESO because we are rewriting the state with the combined text
         if open_atencion:
+            db.execute(text("DELETE FROM public.analisis_general WHERE atencion_id=CAST(:aid AS uuid)"), {"aid": open_atencion[0]})
             db.execute(text("DELETE FROM public.atenciones WHERE id=CAST(:aid AS uuid)"), {"aid": open_atencion[0]})
         
         redis_conn = Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
@@ -639,16 +649,15 @@ def extract_atenciones_job(grabacion_id: str) -> Dict[str, Any]:
             )
             inserted_count += 1
             
-            if estado == "COMPLETADA":
-                # Enqueue evaluate
-                q_analysis.enqueue(
-                    "rq_workers.llm_worker.evaluate_atencion_job",
-                    new_id,
-                    job_id=f"evaluate_{new_id}",
-                    result_ttl=3600,
-                    ttl=3600,
-                    job_timeout=600,
-                )
+            # Siempre encolar evaluación para TODAS las atenciones insertadas (evita que queden pendientes)
+            q_analysis.enqueue(
+                "rq_workers.llm_worker.evaluate_atencion_job",
+                new_id,
+                job_id=f"evaluate_{new_id}",
+                result_ttl=3600,
+                ttl=3600,
+                job_timeout=600,
+            )
 
         if inserted_count == 0 and segments:
             print(f"[LLM Worker] Ninguna micro-atención superó el filtro. Creando atención consolidadora con {len(segments)} segmentos.")
@@ -742,6 +751,10 @@ def evaluate_atencion_job(atencion_id: str) -> Dict[str, Any]:
                 ),
                 {"gid": str(grabacion_id) if grabacion_id else None, "aid": atencion_id, "res": "Sin métricas de evaluación activas.", "sent": "NEUTRO", "calif": 100.0, "fa": utcnow()},
             ).first()
+            db.execute(
+                text("UPDATE public.atenciones SET estado='COMPLETADA' WHERE id=CAST(:aid AS uuid)"),
+                {"aid": atencion_id}
+            )
             db.commit()
             return {
                 "ok": True,
@@ -776,6 +789,12 @@ def evaluate_atencion_job(atencion_id: str) -> Dict[str, Any]:
         evaluaciones = out.get("evaluaciones") or []
 
         resumen_db = resumen if resumen else f"Atención evaluada ({len(evaluaciones)} preguntas)."
+
+        # Limpiar análisis previos de esta atención para evitar duplicados
+        db.execute(
+            text("DELETE FROM public.analisis_general WHERE atencion_id=CAST(:aid AS uuid)"),
+            {"aid": atencion_id}
+        )
 
         analisis_id_row = db.execute(
             text(
@@ -838,6 +857,11 @@ def evaluate_atencion_job(atencion_id: str) -> Dict[str, Any]:
                 ),
                 {"aid": analisis_id, "pid": pid, "sid": None, "rb": cumple, "j": just, "punt": punt_val, "ca": utcnow()},
             )
+        # Actualizar estado de la atención a COMPLETADA al culminar el análisis
+        db.execute(
+            text("UPDATE public.atenciones SET estado='COMPLETADA' WHERE id=CAST(:aid AS uuid)"),
+            {"aid": atencion_id}
+        )
         db.commit()
 
     return {

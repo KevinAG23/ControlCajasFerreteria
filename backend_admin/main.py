@@ -131,7 +131,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 # --- CONTACTS ENDPOINTS ---
 @app.get("/contactos", response_model=List[schemas.Contacto])
-async def read_contactos(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_contactos(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_contactos(db, skip=skip, limit=limit)
 
 @app.post("/contactos", response_model=schemas.Contacto)
@@ -173,7 +173,7 @@ async def delete_contacto(contacto_id: UUID, db: AsyncSession = Depends(database
 
 # --- SUCURSALES ENDPOINTS ---
 @app.get("/sucursales", response_model=List[schemas.Sucursal])
-async def read_sucursales(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_sucursales(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_sucursales(db, skip=skip, limit=limit)
 
 @app.post("/sucursales", response_model=schemas.Sucursal)
@@ -220,7 +220,7 @@ async def delete_sucursal(sucursal_id: UUID, db: AsyncSession = Depends(database
 
 # --- USERS ENDPOINTS ---
 @app.get("/usuarios", response_model=List[schemas.Usuario])
-async def read_usuarios(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_usuarios(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_usuarios(db, skip=skip, limit=limit)
 
 @app.post("/usuarios", response_model=schemas.Usuario)
@@ -287,7 +287,7 @@ async def read_roles(db: AsyncSession = Depends(database.get_db)):
 
 # --- CAJAS ENDPOINTS ---
 @app.get("/cajas", response_model=List[schemas.Caja])
-async def read_cajas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_cajas(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_cajas(db, skip=skip, limit=limit)
 
 @app.post("/cajas", response_model=schemas.Caja)
@@ -332,7 +332,7 @@ async def delete_caja(caja_id: UUID, db: AsyncSession = Depends(database.get_db)
 
 # --- METRIC CATEGORIES ENDPOINTS (Backwards compatible naming) ---
 @app.get("/metricas/categorias", response_model=List[schemas.CategoriaPregunta])
-async def read_categorias_metricas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_categorias_metricas(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_categorias_preguntas(db, skip=skip, limit=limit)
 
 @app.post("/metricas/categorias", response_model=schemas.CategoriaPregunta)
@@ -378,7 +378,7 @@ async def delete_categoria_metrica(categoria_id: UUID, db: AsyncSession = Depend
 
 # --- METRIC QUESTIONS ENDPOINTS ---
 @app.get("/metricas/preguntas", response_model=List[schemas.CatalogoPregunta])
-async def read_preguntas_metricas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_preguntas_metricas(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_catalogo_preguntas(db, skip=skip, limit=limit)
 
 @app.post("/metricas/preguntas", response_model=schemas.CatalogoPregunta)
@@ -440,7 +440,7 @@ async def cerrar_sesion(data: dict, db: AsyncSession = Depends(database.get_db))
 
 @app.get("/admin/estado-cajas")
 async def estado_cajas(db: AsyncSession = Depends(database.get_db)):
-    cajas = await crud.get_cajas(db, skip=0, limit=100)
+    cajas = await crud.get_cajas(db)
     
     # We simulate the state matching frontend expectations
     # The frontend expects: [{ codigo: "Caja01", tiene_sesion_abierta: true/false }]
@@ -476,19 +476,19 @@ async def api_cost_report():
 
 # --- GRABACIONES / ANALISIS ENDPOINTS ---
 @app.get("/grabaciones", response_model=List[schemas.Grabacion])
-async def api_get_grabaciones(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_grabaciones(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     return await crud.get_grabaciones(db, skip=skip, limit=limit)
     
 @app.get("/grabaciones/caja/{caja_id}", response_model=List[schemas.Grabacion])
-async def api_get_grabaciones_caja(caja_id: UUID, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_grabaciones_caja(caja_id: UUID, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     return await crud.get_grabaciones_by_caja(db, caja_id, limit=limit)
 
 @app.get("/grabaciones/usuario/{usuario_id}", response_model=List[schemas.Grabacion])
-async def api_get_grabaciones_usuario(usuario_id: UUID, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_grabaciones_usuario(usuario_id: UUID, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     return await crud.get_grabaciones_by_usuario(db, usuario_id, limit=limit)
 
 @app.get("/analisis", response_model=List[schemas.AnalisisGeneral])
-async def api_get_analisis(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_analisis(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     # We fetch analyses
     return await crud.get_analisis(db)
 
@@ -627,5 +627,5 @@ async def api_get_transcripciones(grabacion_id: UUID, db: AsyncSession = Depends
     return await crud.get_transcripciones(db, grabacion_id)
 
 @app.get("/logs", response_model=schemas.PaginatedLogs)
-async def api_get_logs(skip: int = 0, limit: int = 100, date_filter: Optional[str] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def api_get_logs(skip: int = 0, limit: Optional[int] = None, date_filter: Optional[str] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_logs_auditoria(db, skip=skip, limit=limit, date_filter=date_filter)

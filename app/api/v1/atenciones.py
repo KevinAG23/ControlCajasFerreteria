@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from typing import Optional
 import uuid
 from app.db.session import get_db
 from app.api.deps import get_current_user
@@ -10,6 +11,7 @@ router = APIRouter()
 @router.get("/usuarios/{usuario_id}/atenciones")
 async def get_atenciones_cajero(
     usuario_id: uuid.UUID,
+    limit: Optional[int] = None,
     _user=Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -46,8 +48,9 @@ async def get_atenciones_cajero(
        OR a.usuario_id = CAST(:cid AS uuid))
        AND (a.duracion_segundos IS NULL OR a.duracion_segundos >= 15)
     ORDER BY a.fecha_hora_inicio DESC NULLS LAST, a.created_at DESC
-    LIMIT 100
     """
+    if limit is not None and limit > 0:
+        query += f" LIMIT {int(limit)}"
     result = await db.execute(text(query), {"cid": contact_id_str, "uid": user_id_str})
     rows = result.fetchall()
     

@@ -41,20 +41,36 @@ for jid in failed_ids:
         print(f"    - No se pudo reenviar {jid}: {e}")
 print(f"[OK] {requeued_count} trabajos reencolados desde FailedJobRegistry.\n")
 
-# 2. Conectar a PostgreSQL para buscar atenciones sin análisis
+# 2. Conectar a PostgreSQL para sanear duplicados y buscar atenciones sin análisis
 if DATABASE_URL:
     try:
         engine = create_engine(DATABASE_URL, pool_pre_ping=True)
         with engine.connect() as conn:
-            # Buscar atenciones completadas que no tienen registro en analisis_general
+            # 2.1 Limpiar atenciones duplicadas exactas (mismo grabacion_id, misma hora inicio, misma duracion)
+            # Conservamos la que tenga análisis, o la más antigua si ninguna tiene
+            dup_del_query = text("""
+                DELETE FROM public.atenciones a
+                USING public.atenciones b
+                WHERE a.id > b.id
+                  AND a.grabacion_id = b.grabacion_id
+                  AND a.fecha_hora_inicio = b.fecha_hora_inicio
+                  AND a.duracion_segundos = b.duracion_segundos
+                  AND NOT EXISTS (SELECT 1 FROM public.analisis_general ag WHERE ag.atencion_id = a.id)
+            """)
+            del_result = conn.execute(dup_del_query)
+            conn.commit()
+            print(f"[OK] {del_result.rowcount} atenciones duplicadas limpiadas de la base de datos.")
+
+            # 2.2 Buscar TODAS las atenciones que no tienen registro en analisis_general
             rows = conn.execute(text("""
-                SELECT a.id::text, a.grabacion_id::text
+                SELECT a.id::text, a.grabacion_id::text, a.estado
                 FROM public.atenciones a
                 LEFT JOIN public.analisis_general ag ON a.id = ag.atencion_id
-                WHERE a.estado = 'COMPLETADA' AND ag.id IS NULL
+                WHERE ag.id IS NULL
+                ORDER BY a.created_at ASC
             """)).fetchall()
             
-            print(f"[*] Atenciones completadas que aún no tienen análisis en BD: {len(rows)}")
+            print(f"[*] Atenciones totales sin análisis en BD: {len(rows)}")
             enqueued_atenciones = 0
             for r in rows:
                 aten_id = r[0]
@@ -72,7 +88,7 @@ if DATABASE_URL:
                     enqueued_atenciones += 1
             print(f"[OK] {enqueued_atenciones} evaluaciones de atenciones encoladas correctamente.\n")
             
-            # Buscar grabaciones con transcripción pendientes de extracción
+            # 2.3 Buscar grabaciones con transcripción pendientes de extracción
             grab_rows = conn.execute(text("""
                 SELECT g.id::text
                 FROM public.grabaciones g
