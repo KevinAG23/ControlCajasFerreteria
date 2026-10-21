@@ -1,0 +1,52 @@
+<Window x:Class="CajaRecorderAgent.Views.SuccessWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Éxito" Height="80" Width="320"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False">
+    
+    <!-- Animación de entrada y salida -->
+    <Window.Triggers>
+        <EventTrigger RoutedEvent="Window.Loaded">
+            <BeginStoryboard>
+                <Storyboard>
+                    <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.3"/>
+                    <DoubleAnimation Storyboard.TargetProperty="Top" From="{Binding Top, RelativeSource={RelativeSource AncestorType=Window}}" To="{Binding Top, RelativeSource={RelativeSource AncestorType=Window}}" Duration="0:0:0.3">
+                        <!-- Pequeño rebote hacia arriba, manejado desde código si es necesario -->
+                    </DoubleAnimation>
+                </Storyboard>
+            </BeginStoryboard>
+        </EventTrigger>
+    </Window.Triggers>
+
+    <Border Background="#1e1e2f" CornerRadius="12" Margin="10">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="12" ShadowDepth="4" Opacity="0.3" Color="Black"/>
+        </Border.Effect>
+        <Grid Margin="15,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            
+            <!-- Ícono de Éxito Moderno -->
+            <Grid Width="36" Height="36" VerticalAlignment="Center" Margin="0,0,15,0">
+                <Ellipse Fill="#10b981" Opacity="0.2"/>
+                <Path Data="M 10,18 L 16,24 L 26,12" 
+                      Stroke="#10b981" StrokeThickness="3" 
+                      StrokeEndLineCap="Round" StrokeStartLineCap="Round" StrokeLineJoin="Round"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Textos -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <TextBlock Text="¡Guardado Exitoso!" FontSize="15" FontWeight="SemiBold" Foreground="#f8fafc" Margin="0,0,0,2"/>
+                <TextBlock Text="Caja actualizada correctamente." FontSize="13" Foreground="#94a3b8" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
