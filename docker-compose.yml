@@ -209,6 +209,7 @@ services:
     volumes:
       - ./storage:/app/storage
       - ./audios:/app/audios
+      - ./whisperx_worker:/app/whisperx_worker
       - ./.env:/app/.env
     depends_on:
       db:

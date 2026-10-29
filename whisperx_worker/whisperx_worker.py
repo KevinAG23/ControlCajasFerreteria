@@ -55,33 +55,30 @@ BEAM_SIZE      = int(os.getenv("WHISPERX_BEAM_SIZE", "5"))
 CONDITION_PREV = os.getenv("WHISPERX_CONDITION_PREV", "false").strip().lower() == "true"
 SUPPRESS_NUM   = os.getenv("WHISPERX_SUPPRESS_NUMERALS", "false").strip().lower() == "true"
 
-# initial_prompt: proporciona contexto de dominio al modelo SIN forzar texto
+# initial_prompt: Glosario de vocabulario de dominio. NUNCA oraciones descriptivas completas para evitar que Whisper las alucine.
 INITIAL_PROMPT = os.getenv(
     "WHISPERX_INITIAL_PROMPT",
-    "ConversaciÃ³n en una caja entre cajero y cliente. Se mencionan productos, precios, pagos, efectivo, tarjeta, factura y cambio."
+    "Ferretería, cotización, proforma, factura, boleta, RUC, cédula, cliente, caja, cajero, pago, efectivo, tarjeta, transferencia, cambio, tubos de PVC, galvanizado, pernos, tornillos, tuercas, arandelas, brocas, taladro, disco de corte, lija, pintura, cemento, alambre, dólares, centavos."
 ).strip()
 
-# El motor de beam search favorece estas palabras durante la decodificaciÃ³n
-# -> Soluciona OOV (Out-Of-Vocabulary): nombres propios, siglas, marcas
-# Formato CSV en .env: WHISPERX_HOTWORDS=cajero,cliente,factura
+# El motor de beam search favorece estas palabras durante la decodificación
 _hotwords_raw = os.getenv(
     "WHISPERX_HOTWORDS",
     "cajero,cliente,factura,pago,tarjeta,efectivo,servicio,gracias"
 ).strip()
 HOTWORDS: list[str] = [w.strip() for w in _hotwords_raw.split(",") if w.strip()] if _hotwords_raw else []
 
-# DiarizaciÃ³n -> modelo configurable (pyannote 3.1 estable por defecto)
+# Diarización -> modelo configurable (pyannote 3.1 estable por defecto)
 DIAR_MODEL     = os.getenv(
     "WHISPERX_DIAR_MODEL",
     "pyannote/speaker-diarization-3.1"
 ).strip()
 
 # VAD Options - Configuraciones de Whisper y VAD
-WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v3")
-# VAD: Lee directamente la variable del entorno (por defecto 0.050 / 0.150 para máxima sensibilidad y captura de voz)
-VAD_ONSET = float(os.getenv("WHISPERX_VAD_ONSET", "0.050"))
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "large-v3-turbo")
+# VAD Onset/Offset: 0.250 / 0.363 evita procesar estática/silencio donde Whisper alucina URLs
+VAD_ONSET = float(os.getenv("WHISPERX_VAD_ONSET", "0.250"))
 VAD_OFFSET = float(os.getenv("WHISPERX_VAD_OFFSET", "0.363"))
-INITIAL_PROMPT = os.getenv("WHISPERX_INITIAL_PROMPT", "Bienvenidos a la ferretería. Tenemos tubos de PVC, clavos, tornillos, pintura, cemento, alambre, pulgadas, pernos, lijas, brochas. ¿Desea factura con datos o consumidor final? Son cinco dólares. Muchas gracias, vuelva pronto.")
 
 # ---- LÃMITES DE RECURSOS (objetivo: mÃ¡ximo 70% de cada recurso) ----
 VRAM_FRACTION  = float(os.getenv("WHISPERX_VRAM_FRACTION", "0.70"))
@@ -188,16 +185,18 @@ def _get_models():
     else:
         log.info("CPU THREADS: auto (%d hilos detectados por PyTorch)", torch.get_num_threads())
 
-    # ----- ASR OPTIONS - Estándar 100% Nativo (sin filtros agresivos) -----
+    # ----- ASR OPTIONS - Optimizado anti-alucinaciones y anti-bucles -----
     asr_options = {
         "beam_size": BEAM_SIZE,
-        "condition_on_previous_text": CONDITION_PREV,  # Usa la variable del entorno
+        "condition_on_previous_text": CONDITION_PREV,  # False recomendado para que un silencio no contamine el resto
         "suppress_numerals": SUPPRESS_NUM,
         "initial_prompt": INITIAL_PROMPT if INITIAL_PROMPT else None,
         "hotwords": None,
-        "no_speech_threshold": 0.60,
+        "no_speech_threshold": 0.65,  # 0.65 descarta ruidos ambientales leves
         "log_prob_threshold": -1.0,
-        "temperatures": [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        "compression_ratio_threshold": 2.2,  # Detiene repeticiones excesivas en faster-whisper
+        "repetition_penalty": 1.15,  # Penaliza la repetición de palabras contiguas
+        "temperatures": [0.0, 0.2, 0.4]  # Elimina temperaturas altas (0.6, 0.8) que inventan URLs y webs
     }
 
     # ----- VAD OPTIONS -----
@@ -266,39 +265,156 @@ def _get_models():
 
 
 # =========================
-# HELPERS
+# MOTOR ANTI-ALUCINACIONES Y HELPERS
 # =========================
-def clean_transcription_segments(segments: list) -> list:
+import re
+
+URL_DOMAIN_PATTERN = re.compile(
+    r'(https?://\S+|www\.[a-zA-Z0-9.\-_/]+|\b[a-zA-Z0-9.\-_]+\.(?:com|org|net|info|br|es|co|io|tv|gov|edu|me|xyz|site|online|top|club|de|ru|fr|it|nl)\b)',
+    re.IGNORECASE
+)
+
+BOILERPLATE_PATTERN = re.compile(
+    r'\b(m[áa]s informaci[óo]n|subt[íi]tulos?|subtitulado|subt[íi]tulos por|transcripci[óo]n por|'
+    r'traducido por|comunidad de amara|amara\.org|suscr[íi]bete|suscr[íi]base|canal de youtube|'
+    r'todos los derechos reservados|copyright|gracias por ver el video|gracias por ver el v[íi]deo|'
+    r'gracias por su atenci[óo]n|gracias por su compania)\b',
+    re.IGNORECASE
+)
+
+PHRASE_LOOP_PATTERN = re.compile(
+    r'(.{4,}?)(?:[,\s]+\1){2,}',
+    re.IGNORECASE
+)
+
+WORD_LOOP_PATTERN = re.compile(
+    r'\b(\w+)\b(?:[,\s]+\1){3,}',
+    re.IGNORECASE
+)
+
+KNOWN_HALLUCINATIONS = [
+    "alimmenta",
+    "antarctica films",
+    "este es el centro de la ciudad de mexico",
+    "ciudad de mexico",
+    "alambre para maravilla",
+    "paseo de la compañia nacional del trabajo",
+    "en el centro de la ciudad se encuentra el centro comercial",
+    "y servicios de salud",
+    "iglesia de jesucristo de los santos",
+    "en este video vamos a",
+    "bienvenidos a nuestro canal",
+    "bienvenidos a un nuevo video",
+    "este video esta realizado por",
+    "saludos a todos los que nos han visitado",
+    "quien es de 25 centavos",
+    "yo creo que aqui es la",
+    "atencion al cliente en caja",
+    "el cajero realiza la venta",
+    "conversacion de atencion al cliente"
+]
+
+
+def is_hallucination_or_noise(text: str, initial_prompt: str = "") -> tuple[bool, str]:
     """
-    Limpia repeticiones contiguas idénticas o casi idénticas, 
-    elimina segmentos con solo puntuación (ej: '.', '...', '..')
-    y normaliza el flujo para que no aparezcan frases duplicadas.
+    Detecta alucinaciones de WhisperX:
+    - Enlaces y dominios web (www.*, .com, .info, .br)
+    - Subtítulos de YouTube o créditos de transcripción
+    - Bucles de repetición de palabras o frases
+    - Ecos directos del INITIAL_PROMPT
+    - Alucinaciones estáticas comunes
+    """
+    if not text:
+        return True, "empty"
+
+    text_clean = text.strip()
+    norm = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]', ' ', text_clean.lower()).strip()
+    words = norm.split()
+
+    if len(re.sub(r'\s+', '', norm)) < 2:
+        return True, "demasiado_corto"
+
+    # 1. URLs y dominios web (ej: www.mesmerism.info, www.marcoparet.com.br, feyyaz.com)
+    if URL_DOMAIN_PATTERN.search(text_clean):
+        return True, "url_o_dominio_web"
+
+    # 2. Boilerplate de YouTube y subtitulado
+    if BOILERPLATE_PATTERN.search(text_clean):
+        return True, "boilerplate_youtube_subtitulos"
+
+    # 3. Bucle de frase (ej: "en Colombia, en Colombia, en Colombia")
+    if PHRASE_LOOP_PATTERN.search(text_clean):
+        return True, "bucle_de_frase"
+
+    # 4. Bucle de una sola palabra repetida 4+ veces seguidas
+    if WORD_LOOP_PATTERN.search(text_clean):
+        return True, "bucle_de_palabra"
+
+    # 5. Repetición de palabra dominante en segmento
+    if len(words) >= 4:
+        counts = {}
+        for w in words:
+            counts[w] = counts.get(w, 0) + 1
+        top_w, top_c = max(counts.items(), key=lambda x: x[1])
+        if top_w in ['si', 'sí', 'ya', 'no', 'ok', 'claro', 'bueno']:
+            if top_c >= 5 and (top_c / len(words)) >= 0.70:
+                return True, f"repeticion_palabra_{top_w}"
+        else:
+            if top_c >= 3 and (top_c / len(words)) >= 0.60:
+                return True, f"repeticion_palabra_{top_w}"
+
+    # 6. Alucinaciones estáticas
+    norm_nospace = re.sub(r'\s+', '', norm)
+    for h in KNOWN_HALLUCINATIONS:
+        h_norm = re.sub(r'[^a-z0-9]', '', h.lower())
+        if len(h_norm) > 5 and (h_norm in norm_nospace or (len(norm_nospace) > 10 and norm_nospace in h_norm)):
+            return True, f"alucinacion_conocida_{h}"
+
+    # 7. Eco directo del INITIAL_PROMPT
+    if initial_prompt and len(words) >= 3:
+        p_words = re.findall(r'\b[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]+\b', initial_prompt.lower())
+        if len(p_words) >= 3:
+            p_words_set = set(p_words)
+            overlap_count = sum(1 for w in words if w in p_words_set)
+            overlap_ratio = overlap_count / len(words)
+            if len(words) >= 4 and overlap_ratio >= 0.70:
+                return True, f"eco_prompt_ratio_{overlap_ratio:.2f}"
+            p_text = " ".join(p_words)
+            s_text = " ".join(words)
+            if len(words) >= 4 and s_text in p_text:
+                return True, "subfrase_exacta_prompt"
+
+    return False, ""
+
+
+def clean_transcription_segments(segments: list, initial_prompt: str = "") -> list:
+    """
+    Filtra y limpia la lista final de segmentos:
+    - Descarta alucinaciones, URLs y bucles de repetición
+    - Deduplica segmentos idénticos contiguos
+    - Elimina segmentos vacíos o con solo signos de puntuación
     """
     if not segments:
         return []
-    
-    import re
+
     cleaned = []
     prev_norm = ""
-    
+
     for seg in segments:
         raw_text = (seg.get("text") or "").strip()
-        # 1. Ignorar puntos, signos aislados o vacíos
-        if not raw_text or raw_text in [".", "..", "...", "-", "_", "!", "?"]:
+        is_hallucination, reason = is_hallucination_or_noise(raw_text, initial_prompt or INITIAL_PROMPT)
+        if is_hallucination:
+            log.warning(f"FILTRADO POST-ALIGN ({reason}): '{raw_text}'")
             continue
-            
+
         norm = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]', '', raw_text.lower())
-        if len(norm) <= 1:
-            continue
-            
-        # 2. Ignorar si es idéntico al segmento previo (deduplicación contigua)
         if norm == prev_norm:
-            log.warning(f"DEDUPLICADO (Segmento contiguo idéntico): '{raw_text}'")
+            log.warning(f"DEDUPLICADO POST-ALIGN (contiguo idéntico): '{raw_text}'")
             continue
-            
+
         cleaned.append(seg)
         prev_norm = norm
-        
+
     return cleaned
 
 
@@ -495,148 +611,26 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
 
         language_code = LANG or base_result.get("language", "es")
 
-        # --- FILTRO ANTIALUCINACIONES ---
-        # WhisperX a menudo alucina frases de Youtube o repite el prompt inicial en silencios.
-        known_hallucinations = [
-            "gracias por ver el video",
-            "gracias por ver el vÃ­deo",
-            "atenciÃ³n al cliente en caja",
-            "atencion al cliente en caja",
-            "subtÃ­tulos realizados",
-            "subtitulos realizados",
-            "amara.org",
-            "suscrÃ­bete",
-            "suscribete",
-            "gracias por su atenciÃ³n",
-            "gracias por su atencion",
-            "gracias por su compania",
-            "mÃºsica mÃºsica",
-            "musica musica",
-            "ok bien si chao",
-            "bien si chao",
-            "se mencionan",
-            "pulgadas medidas precios",
-            "el cajero realiza la venta",
-            "conversacion de atencion al cliente",
-            "conversaciÃ³n de atenciÃ³n al cliente",
-            "subtÃ­tulos por la comunidad de amara.org",
-            "subtÃ­tulos por",
-            "suscrÃ­bete al canal",
-            "www.cdc.gov",
-            "cdc.gov",
-            "mÃ¡s informaciÃ³n"
-        ]
-        
-        if INITIAL_PROMPT:
-            # AÃ±adir sub-frases clave del prompt para atrapar alucinaciones variadas
-            known_hallucinations.extend([
-                "el cajero realiza la venta de",
-                "la venta de artÃ­culos como",
-                "se mencionan pulgadas, medidas",
-                "precios y facturas",
-                "bienvenidos a la ferreteria",
-                "tenemos tubos de pvc",
-                "desea factura con datos o consumidor final",
-                "muchas gracias vuelva pronto",
-                "son cinco dolares"
-            ])
-
-        # FILTROS ANTI-ALUCINACION SEGUROS
+        # --- FILTRO ANTIALUCINACIONES PRE-ALIGNMENT ---
         filtered_segments = []
-        prev_text_nospace = ""
-        prev_text_count = 0
-        
+        prev_norm = ""
         for seg in base_result.get("segments", []):
-            text_lower = seg['text'].lower().strip()
-            text_clean = text_lower.replace(".", " ").replace(",", " ").replace("!", " ").replace("Â¿", " ").replace("?", " ").replace("Â¡", " ").replace("-", " ")
-            words = text_clean.split()
-            
-            if len(text_clean) < 2:
-                continue
-
-            import re
-            
-            # Filtro 1: Exact Match Hallucinations
-            is_hallucination = False
-            text_nospace = re.sub(r'[^a-zÃ¡Ã©Ã­Ã³ÃºÃ±0-9]', '', text_lower)
-            
-            # Cross-segment repeticion (Ej: "Â¿CÃ³mo se llama?" dicho en 10 segmentos seguidos porque es ruido)
-            if text_nospace == prev_text_nospace and len(text_nospace) > 3:
-                prev_text_count += 1
-                if prev_text_count >= 2: # Si se repite mÃ¡s de 2 veces seguidas
-                    log.warning(f"FILTRADO (Cross-segment repetition): '{seg['text']}'")
-                    continue
-            else:
-                prev_text_nospace = text_nospace
-                prev_text_count = 0
-            
-            # Alucinaciones adicionales y heurÃ­sticas
-            extra_halls = [
-                "alimmenta",
-                "antarctica films",
-                "gracias por ver el video",
-                "gracias por ver el vÃ­deo",
-                "y muchos mÃ¡s",
-                "y mÃ¡s",
-                "este es el centro de la ciudad de mÃ©xico",
-                "ciudad de mÃ©xico",
-                "alambre para maravilla",
-                "paseo de la compaÃ±Ã­a nacional del trabajo",
-                "en el centro de la ciudad se encuentra el centro comercial de la ciudad",
-                "y servicios de salud",
-                "iglesia de jesucristo de los santos de los Ãºltimos dÃ­as",
-                "en este video vamos a visitar",
-                "bienvenidos a nuestro canal",
-                "bienvenidos a un nuevo video",
-                "este video estÃ¡ realizado por la comunidad de amara.org",
-                "saludos a todos los que nos han visitado en este video",
-                "suscrÃ­bete",
-                "suscribete",
-                "gracias",
-                "no no",
-                "bueno bueno",
-                "quiÃ©n es de 25 centavos",
-                "yo creo que aquÃ­ es la"
-            ]
-            
-            for h in known_hallucinations + extra_halls:
-                h_clean = re.sub(r'[^a-zÃ¡Ã©Ã­Ã³ÃºÃ±0-9]', '', h.lower())
-                if len(h_clean) > 5:
-                    if (h_clean in text_nospace) or (len(text_nospace) > 10 and text_nospace in h_clean):
-                        is_hallucination = True
-                        break
-            
+            raw_text = (seg.get("text") or "").strip()
+            is_hallucination, reason = is_hallucination_or_noise(raw_text, INITIAL_PROMPT)
             if is_hallucination:
-                log.warning(f"FILTRADO (Alucinacion de Prompt detectada): '{seg['text']}'")
+                log.warning(f"FILTRADO PRE-ALIGNMENT ({reason}): '{raw_text}'")
                 continue
 
-            # Filtro 2: Intra-segment loop usando regex
-            import re
-            # Busca cualquier frase de 5+ caracteres que se repita al menos 3 veces seguidas
-            if re.search(r'(.{5,}?)(?:\s*\1){3,}', seg['text'], flags=re.IGNORECASE):
-                log.warning(f"FILTRADO (Bucle Regex intra-segmento): '{seg['text']}'")
+            norm = re.sub(r'[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ]', '', raw_text.lower())
+            if norm == prev_norm:
+                log.warning(f"FILTRADO PRE-ALIGNMENT (duplicado contiguo): '{raw_text}'")
                 continue
 
-            if len(words) >= 3:
-                counts = __import__('collections').Counter(words)
-                top_freq = counts.most_common(1)[0][1]
-                if top_freq >= 3 and (top_freq / len(words)) >= 0.5:
-                    log.warning(f"FILTRADO (Repeticion palabra intra-segmento): '{seg['text']}'")
-                    continue
-                    
-            # Filtro 3: Secuencias repetidas
-            n = len(words)
-            if n >= 4 and n % 2 == 0 and words[:n//2] == words[n//2:]:
-                log.warning(f"FILTRADO (Secuencia repetida x2): '{seg['text']}'")
-                continue
-            if n >= 6 and n % 3 == 0 and words[:n//3] * 3 == words:
-                log.warning(f"FILTRADO (Secuencia repetida x3): '{seg['text']}'")
-                continue
-                
             filtered_segments.append(seg)
-            
+            prev_norm = norm
+
         base_result["segments"] = filtered_segments
-        # --------------------------------
+        # ----------------------------------------------
 
         n_segments_raw = len(base_result.get("segments", []))
         t1_elapsed = time.perf_counter() - t1
@@ -744,7 +738,7 @@ def transcribe_job(grabacion_id: str, yyyymmdd: str):
             last_speaker = seg.get("speaker")
             last_segment_end = end
 
-        segments = clean_transcription_segments(segments)
+        segments = clean_transcription_segments(segments, INITIAL_PROMPT)
 
         # Contar speakers detectados
         speakers_detectados = {s.get("speaker") for s in segments if s.get("speaker")}
