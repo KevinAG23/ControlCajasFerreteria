@@ -33,7 +33,7 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 STORAGE_ROOT = Path(os.getenv("STORAGE_ROOT", "storage")).resolve()
 INCOMING_DIR = STORAGE_ROOT / "incoming"
 
-ALLOWED_EXT = {".wav", ".m4a", ".mp3", ".ogg", ".flac"}
+ALLOWED_EXT = {".wav", ".m4a", ".mp3", ".ogg", ".flac", ".aac"}
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 if not DATABASE_URL:
@@ -219,21 +219,22 @@ def ingest_one_file(p: Path) -> str:
 
         db.commit()
 
-        # Encola Enhance exactamente como tu API
-        q_enhance.enqueue(
-            "rq_workers.enhance_worker.enhance_job",
-            grabacion_id,
-            str(incoming_path),
+        q_whisperx = Queue("whisperx", connection=redis_conn)
+        q_whisperx.enqueue(
+            "whisperx_worker.whisperx_worker.transcribe_job",
+            str(grabacion_id),
             yyyymmdd,
-            job_id=grabacion_id,
+            job_id=f"whisperx_{grabacion_id}",
             result_ttl=3600,
             ttl=3600,
             failure_ttl=86400,
+            job_timeout=3600,
+            meta={"source": "folder_ingest"}
         )
 
         db.execute(
             text("UPDATE public.grabaciones SET estado_proceso=:st WHERE id=:id"),
-            {"st": "ENHANCE_QUEUED", "id": grabacion_id}
+            {"st": "WHISPERX_QUEUED", "id": grabacion_id}
         )
         db.commit()
 
@@ -271,6 +272,10 @@ def main():
         except Exception as e:
             print(f"[folder_ingest] loop error: {type(e).__name__}: {e}")
 
+        # Forzar recolección de basura para mantener la memoria al mínimo posible
+        import gc
+        gc.collect()
+        
         time.sleep(POLL_SEC)
 
 if __name__ == "__main__":

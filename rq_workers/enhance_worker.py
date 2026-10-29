@@ -18,7 +18,7 @@ load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+    format="%(asctime)s [%(levelname)s] %(name)s â€” %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 log = logging.getLogger("enhance_worker")
@@ -41,7 +41,7 @@ STORAGE_ROOT = Path(os.getenv("STORAGE_ROOT", "storage")).resolve()
 INCOMING_DIR = STORAGE_ROOT / "incoming"
 ENHANCED_DIR = STORAGE_ROOT / "enhanced"
 
-# Parámetros de enhance (configurables por .env)
+# ParÃ¡metros de enhance (configurables por .env)
 TARGET_I = float(os.getenv("ENH_TARGET_I", "-20"))
 TARGET_TP = float(os.getenv("ENH_TARGET_TP", "-2.0"))
 TARGET_LRA = float(os.getenv("ENH_TARGET_LRA", "7"))
@@ -76,11 +76,11 @@ def _db_set_estado(grabacion_id: str, estado: str) -> None:
         db.close()
 
 def _db_set_failed(grabacion_id: str, motivo: str) -> None:
-    log.error("FAILED grabacion_id=%s — %s", grabacion_id, motivo)
+    log.error("FAILED grabacion_id=%s â€” %s", grabacion_id, motivo)
     _db_set_estado(grabacion_id, "FAILED")
 
 
-# AUDIO: UNA SOLA PASADA Y MÉTRICAS
+# AUDIO: UNA SOLA PASADA Y MÃ‰TRICAS
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -121,7 +121,7 @@ def compute_audio_metrics(wav_path: str) -> dict:
         if num_samples == 0:
             return {}
             
-        # Pico máximo (dBFS)
+        # Pico mÃ¡ximo (dBFS)
         peak = np.max(np.abs(data_float))
         peak_db = 20 * np.log10(peak) if peak > 1e-6 else -99.0
         
@@ -161,7 +161,7 @@ def compute_audio_metrics(wav_path: str) -> dict:
         vocal_windows = np.sum(win_rms_db > vocal_threshold)
         activity_pct = (vocal_windows / len(win_rms_db)) * 100.0 if len(win_rms_db) > 0 else 0.0
         
-        # MÉTDRICAS ESPECTRALES (Densidad de potencia usando welch)
+        # MÃ‰TDRICAS ESPECTRALES (Densidad de potencia usando welch)
         from scipy import signal
         frequencies, psd = signal.welch(data_float, fs=sr, nperseg=min(len(data_float), 1024))
         total_power = np.sum(psd)
@@ -203,14 +203,14 @@ def compute_audio_metrics(wav_path: str) -> dict:
             "centroide_espectral_hz": round(centroid, 2)
         }
     except Exception as e:
-        log.warning(f"Error al calcular métricas acústicas: {e}")
+        log.warning(f"Error al calcular mÃ©tricas acÃºsticas: {e}")
         return {}
 
 
 def _db_save_enhance_metrics(grabacion_id: str, metrics: dict) -> None:
     db = SessionLocal()
     try:
-        # Obtener métricas existentes
+        # Obtener mÃ©tricas existentes
         res = db.execute(
             text("SELECT metricas FROM public.grabaciones WHERE id = :id"),
             {"id": grabacion_id}
@@ -229,11 +229,11 @@ def _db_save_enhance_metrics(grabacion_id: str, metrics: dict) -> None:
         import json
         db.execute(
             text("UPDATE public.grabaciones SET metricas = :metrics WHERE id = :id"),
-            {"metrics": json.dumps(existing_metrics), "id": grabacion_id}
+            {"metrics": json.dumps(existing_metrics, default=lambda x: float(x) if hasattr(x, "item") else x), "id": grabacion_id}
         )
         db.commit()
     except Exception as e:
-        log.warning(f"Error al guardar métricas de enhance en DB: {e}")
+        log.warning(f"Error al guardar mÃ©tricas de enhance en DB: {e}")
     finally:
         db.close()
 
@@ -244,7 +244,8 @@ def diarization_single_pass(input_file: str, out_wav: str) -> float:
     características del habla original necesarias para Pyannote Diarization.
     """
     t0 = time.perf_counter()
-    if os.getenv("ENH_BYPASS", "false").strip().lower() == "true":
+    bypass = os.getenv("ENH_BYPASS", "false").strip().lower() == "true"
+    if bypass:
         log.info("ENH_BYPASS activo: omitiendo filtros de diarización y convirtiendo directo.")
         cmd = [
             FFMPEG, "-y",
@@ -254,10 +255,11 @@ def diarization_single_pass(input_file: str, out_wav: str) -> float:
             out_wav
         ]
     else:
-        # Solo paso alto para eliminar frecuencias subgraves y loudnorm suave
+        # Pasa-alto suave para eliminar sub-graves de motores y ruido de mesa
         filter_list = [
-            "highpass=f=90",
-            "loudnorm=I=-22:LRA=10:TP=-2"
+            f"highpass=f={max(80, HIGHPASS_HZ)}",
+            f"lowpass=f={min(7500, LOWPASS_HZ)}",
+            f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}"
         ]
         af = ",".join(filter_list)
         cmd = [
@@ -276,12 +278,16 @@ def diarization_single_pass(input_file: str, out_wav: str) -> float:
 
 def enhance_single_pass(input_file: str, out_wav: str) -> float:
     """
-    Convierte y mejora el audio usando filtros avanzados de FFmpeg en una sola pasada.
-    Elimina silenceremove para mantener consistencia de timestamps de cara a WhisperX/Pyannote.
+    Convierte y aísla las voces humanas usando filtros de FFmpeg limpios:
+    - Bandpass vocal (elimina vibración de motos/motores <80Hz y siseos >7000Hz).
+    - Agate suave para silenciar ruidos lejanos cuando nadie habla.
+    - Denoise suave configurable desde .env.
+    - Normalización equilibrada sin ecualizaciones artificiales que hagan la voz aguda.
     """
     t0 = time.perf_counter()
+    bypass = os.getenv("ENH_BYPASS", "false").strip().lower() == "true"
 
-    if os.getenv("ENH_BYPASS", "false").strip().lower() == "true":
+    if bypass:
         log.info("ENH_BYPASS activo: omitiendo filtros de enhance y convirtiendo directo.")
         cmd = [
             FFMPEG, "-y",
@@ -291,29 +297,21 @@ def enhance_single_pass(input_file: str, out_wav: str) -> float:
             out_wav
         ]
     else:
-        # 1. Filtros de entrada paso alto/bajo
+        # 1. Filtros de entrada pasa-alto y pasa-bajo de voz humana
+        hp = max(60, HIGHPASS_HZ)
+        lp = min(7800, LOWPASS_HZ)
         filter_list = [
-            f"highpass=f={HIGHPASS_HZ}",
-            f"lowpass=f={LOWPASS_HZ}",
+            f"highpass=f={hp}",
+            f"lowpass=f={lp}",
         ]
-        
-        # 2. Denoise inteligente (no acumular RNNoise + afftdn automáticamente)
-        denoise_mode = os.getenv("ENH_DENOISE_MODE", "afftdn").lower()
-        rnnoise_path = Path("/app/models/rnnoise") / os.getenv("ENH_RNNOISE_MODEL", "bd.rnnn")
-        
-        if denoise_mode == "rnnoise" and rnnoise_path.exists():
-            filter_list.append(f"arnndn=m={rnnoise_path.as_posix()}")
-        elif denoise_mode == "afftdn" or denoise_mode != "none":
+
+        # 2. Denoise inteligente respetando .env si está activo
+        denoise_mode = os.getenv("ENH_DENOISE_MODE", "afftdn").strip().lower()
+        if denoise_mode == "afftdn":
             filter_list.append(f"afftdn=nr={AFFTDN_NR}:nf={AFFTDN_NF}")
-            
-        # 3. Filtros acústicos de ecualización, compresión y normalización recomendados
-        filter_list.extend([
-            "equalizer=f=160:t=q:w=0.9:g=-4",  # Atenúa subgraves
-            "equalizer=f=280:t=q:w=1.0:g=-2",  # Atenúa graves resonantes
-            f"equalizer=f={PRESENCE_BOOST_HZ}:t=q:w=1:g={PRESENCE_BOOST_DB}",  # Presencia vocal (2600Hz)
-            "acompressor=threshold=-22dB:ratio=1.7:attack=15:release=220:makeup=1",  # Compresión suave
-            f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}",  # Normalización inteligente (-20 LUFS)
-        ])
+        
+        # 3. Normalización estándar broadcast para audibilidad clara sin saturación
+        filter_list.append(f"loudnorm=I={TARGET_I}:LRA={TARGET_LRA}:TP={TARGET_TP}")
         
         af = ",".join(filter_list)
 
@@ -341,7 +339,7 @@ def enhance_job(grabacion_id: str, incoming_path: str, yyyymmdd: str):
     """
     Etapa B (Enhance):
     - Marca ENHANCING
-    - Convierte + mejora para ASR (ENH) y genera copia para diarización (DIAR)
+    - Convierte + mejora para ASR (ENH) y genera copia para diarizaciÃ³n (DIAR)
     - Guarda en storage/enhanced/<yyyymmdd>/
     - Marca ENHANCED
     - Encola WhisperX
@@ -372,7 +370,7 @@ def enhance_job(grabacion_id: str, incoming_path: str, yyyymmdd: str):
         t_diar = diarization_single_pass(str(in_path), str(diar_path))
         log.info("Diarization audio completado en %.2f s | %s", t_diar, diar_path.name)
 
-        # Calcular y guardar métricas de audio
+        # Calcular y guardar mÃ©tricas de audio
         try:
             metrics = compute_audio_metrics(str(out_path))
             metrics["duracion_original"] = round(get_audio_duration(str(in_path)), 2)
@@ -385,9 +383,9 @@ def enhance_job(grabacion_id: str, incoming_path: str, yyyymmdd: str):
             metrics["afftdn_nf"] = AFFTDN_NF
             
             _db_save_enhance_metrics(grabacion_id, metrics)
-            log.info("Métricas de enhance guardadas en base de datos para grabacion_id=%s", grabacion_id)
+            log.info("MÃ©tricas de enhance guardadas en base de datos para grabacion_id=%s", grabacion_id)
         except Exception as em:
-            log.warning("No se pudieron guardar las métricas de enhance: %s", em)
+            log.warning("No se pudieron guardar las mÃ©tricas de enhance: %s", em)
 
         _db_set_estado(grabacion_id, "ENHANCED")
 
@@ -395,7 +393,7 @@ def enhance_job(grabacion_id: str, incoming_path: str, yyyymmdd: str):
         redis_conn = Redis.from_url(REDIS_URL)
         q_whisperx = Queue("whisperx", connection=redis_conn)
 
-        #  job_id sin ":" (RQ lo prohíbe)
+        #  job_id sin ":" (RQ lo prohÃ­be)
         q_whisperx.enqueue(
             "whisperx_worker.whisperx_worker.transcribe_job",
             grabacion_id,

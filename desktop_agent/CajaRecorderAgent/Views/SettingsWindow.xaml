@@ -80,6 +80,8 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="10"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="10"/>
+                            <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
                         <!-- Micrófono -->
@@ -108,6 +110,16 @@
                             <ComboBoxItem Content="Operativa"/>
                             <ComboBoxItem Content="En Mantenimiento"/>
                             <ComboBoxItem Content="Fuera de Servicio"/>
+                        </ComboBox>
+
+                        <!-- Duración Segmento -->
+                        <TextBlock Text="Tiempo Grabación" Grid.Row="8" Grid.Column="0"
+                                   VerticalAlignment="Center" Foreground="#FF5B3A2A" FontWeight="SemiBold"/>
+                        <ComboBox x:Name="CmbDuracion" Grid.Row="8" Grid.Column="1"
+                                  Height="32" Padding="6,4">
+                            <ComboBoxItem Content="10 Minutos" Tag="10"/>
+                            <ComboBoxItem Content="20 Minutos" Tag="20"/>
+                            <ComboBoxItem Content="30 Minutos" Tag="30"/>
                         </ComboBox>
                     </Grid>
                 </StackPanel>

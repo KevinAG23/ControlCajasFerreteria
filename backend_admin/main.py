@@ -36,13 +36,27 @@ async def startup_event():
             # Alter tables for new columns
             await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS estado_operativo VARCHAR(50) DEFAULT 'Operativa';"))
             await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS motivo_estado TEXT;"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS sucursal_id UUID REFERENCES sucursales(id);"))
+            await conn.execute(text("ALTER TABLE contactos ADD COLUMN IF NOT EXISTS sucursal_id UUID REFERENCES sucursales(id);"))
+            await conn.execute(text("ALTER TABLE contactos ADD COLUMN IF NOT EXISTS rol_especifico VARCHAR(50);"))
             await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS estado_grabacion VARCHAR(50) DEFAULT 'apagado';"))
             await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_manana_inicio TIME DEFAULT '07:30:00';"))
-            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_manana_fin TIME DEFAULT '12:00:00';"))
-            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_tarde_inicio TIME DEFAULT '16:00:00';"))
-            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_tarde_fin TIME DEFAULT '19:00:00';"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_manana_fin TIME DEFAULT '12:30:00';"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_tarde_inicio TIME DEFAULT '13:30:00';"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS turno_tarde_fin TIME DEFAULT '18:00:00';"))
+            await conn.execute(text("ALTER TABLE categorias_preguntas ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true;"))
             await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS grabacion_habilitada BOOLEAN DEFAULT TRUE;"))
             await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS en_pausa BOOLEAN DEFAULT FALSE;"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS microfono_asignado VARCHAR(255);"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS lista_microfonos JSONB DEFAULT '[]'::jsonb;"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS duracion_segmento_minutos INTEGER DEFAULT 10;"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS version_actual VARCHAR(50);"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS lista_microfonos JSONB DEFAULT '[]'::jsonb;"))
+            await conn.execute(text("ALTER TABLE contactos ADD COLUMN IF NOT EXISTS sucursal_id UUID;"))
+            await conn.execute(text("ALTER TABLE contactos ADD COLUMN IF NOT EXISTS rol_especifico VARCHAR(100);"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS sucursal_id UUID;"))
+            await conn.execute(text("ALTER TABLE catalogo_preguntas ADD COLUMN IF NOT EXISTS ejemplo_respuesta_esperada TEXT;"))
+            await conn.execute(text("ALTER TABLE cajas ADD COLUMN IF NOT EXISTS duracion_segmento_minutos INTEGER DEFAULT 10;"))
             await conn.execute(text("ALTER TABLE contactos ADD COLUMN IF NOT EXISTS rol VARCHAR(50);"))
             await conn.execute(text("ALTER TABLE grabaciones ALTER COLUMN usuario_id DROP NOT NULL;"))
             await conn.execute(text("ALTER TABLE atenciones ALTER COLUMN usuario_id DROP NOT NULL;"))
@@ -117,7 +131,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
 # --- CONTACTS ENDPOINTS ---
 @app.get("/contactos", response_model=List[schemas.Contacto])
-async def read_contactos(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_contactos(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_contactos(db, skip=skip, limit=limit)
 
 @app.post("/contactos", response_model=schemas.Contacto)
@@ -157,9 +171,56 @@ async def delete_contacto(contacto_id: UUID, db: AsyncSession = Depends(database
     ))
     return {"ok": True}
 
+# --- SUCURSALES ENDPOINTS ---
+@app.get("/sucursales", response_model=List[schemas.Sucursal])
+async def read_sucursales(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+    return await crud.get_sucursales(db, skip=skip, limit=limit)
+
+@app.post("/sucursales", response_model=schemas.Sucursal)
+async def create_sucursal(sucursal: schemas.SucursalCreate, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+    db_sucursal = await crud.create_sucursal(db=db, sucursal=sucursal)
+    await crud.create_log(db, schemas.LogAuditoriaCreate(
+        usuario_actor_id=current_user.id,
+        tabla_afectada="sucursales",
+        id_registro_afectado=db_sucursal.id,
+        tipo_accion="INSERT",
+        cambios_json=sucursal.model_dump(mode='json')
+    ))
+    return db_sucursal
+
+@app.put("/sucursales/{sucursal_id}", response_model=schemas.Sucursal)
+async def update_sucursal(sucursal_id: UUID, sucursal: schemas.SucursalUpdate, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+    db_sucursal = await crud.update_sucursal(db=db, sucursal_id=sucursal_id, sucursal=sucursal)
+    if not db_sucursal:
+        raise HTTPException(status_code=404, detail="Sucursal not found")
+    await crud.create_log(db, schemas.LogAuditoriaCreate(
+        usuario_actor_id=current_user.id,
+        tabla_afectada="sucursales",
+        id_registro_afectado=sucursal_id,
+        tipo_accion="UPDATE",
+        cambios_json=sucursal.model_dump(mode='json', exclude_unset=True)
+    ))
+    return db_sucursal
+
+@app.delete("/sucursales/{sucursal_id}")
+async def delete_sucursal(sucursal_id: UUID, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+    try:
+        success = await crud.delete_sucursal(db=db, sucursal_id=sucursal_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Sucursal not found")
+        await crud.create_log(db, schemas.LogAuditoriaCreate(
+            usuario_actor_id=current_user.id,
+            tabla_afectada="sucursales",
+            id_registro_afectado=sucursal_id,
+            tipo_accion="DELETE"
+        ))
+        return {"ok": True}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # --- USERS ENDPOINTS ---
 @app.get("/usuarios", response_model=List[schemas.Usuario])
-async def read_usuarios(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_usuarios(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_usuarios(db, skip=skip, limit=limit)
 
 @app.post("/usuarios", response_model=schemas.Usuario)
@@ -226,7 +287,7 @@ async def read_roles(db: AsyncSession = Depends(database.get_db)):
 
 # --- CAJAS ENDPOINTS ---
 @app.get("/cajas", response_model=List[schemas.Caja])
-async def read_cajas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_cajas(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_cajas(db, skip=skip, limit=limit)
 
 @app.post("/cajas", response_model=schemas.Caja)
@@ -271,7 +332,7 @@ async def delete_caja(caja_id: UUID, db: AsyncSession = Depends(database.get_db)
 
 # --- METRIC CATEGORIES ENDPOINTS (Backwards compatible naming) ---
 @app.get("/metricas/categorias", response_model=List[schemas.CategoriaPregunta])
-async def read_categorias_metricas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_categorias_metricas(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_categorias_preguntas(db, skip=skip, limit=limit)
 
 @app.post("/metricas/categorias", response_model=schemas.CategoriaPregunta)
@@ -306,6 +367,7 @@ async def update_categoria_metrica(categoria_id: UUID, categoria: schemas.Catego
 @app.delete("/metricas/categorias/{categoria_id}")
 async def delete_categoria_metrica(categoria_id: UUID, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     await crud.delete_categoria_pregunta(db=db, categoria_id=categoria_id)
+        
     await crud.create_log(db, schemas.LogAuditoriaCreate(
         usuario_actor_id=current_user.id,
         tabla_afectada="categorias_preguntas",
@@ -316,7 +378,7 @@ async def delete_categoria_metrica(categoria_id: UUID, db: AsyncSession = Depend
 
 # --- METRIC QUESTIONS ENDPOINTS ---
 @app.get("/metricas/preguntas", response_model=List[schemas.CatalogoPregunta])
-async def read_preguntas_metricas(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def read_preguntas_metricas(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_catalogo_preguntas(db, skip=skip, limit=limit)
 
 @app.post("/metricas/preguntas", response_model=schemas.CatalogoPregunta)
@@ -378,7 +440,7 @@ async def cerrar_sesion(data: dict, db: AsyncSession = Depends(database.get_db))
 
 @app.get("/admin/estado-cajas")
 async def estado_cajas(db: AsyncSession = Depends(database.get_db)):
-    cajas = await crud.get_cajas(db, skip=0, limit=100)
+    cajas = await crud.get_cajas(db)
     
     # We simulate the state matching frontend expectations
     # The frontend expects: [{ codigo: "Caja01", tiene_sesion_abierta: true/false }]
@@ -396,21 +458,37 @@ async def estado_cajas(db: AsyncSession = Depends(database.get_db)):
         })
     return result
 
+@app.get("/admin/cost-report")
+async def api_cost_report():
+    import json
+    import os
+    costos_file = "/app/storage/costos.jsonl"
+    report = []
+    if os.path.exists(costos_file):
+        with open(costos_file, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    try:
+                        report.append(json.loads(line.strip()))
+                    except:
+                        pass
+    return report
+
 # --- GRABACIONES / ANALISIS ENDPOINTS ---
 @app.get("/grabaciones", response_model=List[schemas.Grabacion])
-async def api_get_grabaciones(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_grabaciones(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     return await crud.get_grabaciones(db, skip=skip, limit=limit)
     
 @app.get("/grabaciones/caja/{caja_id}", response_model=List[schemas.Grabacion])
-async def api_get_grabaciones_caja(caja_id: UUID, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_grabaciones_caja(caja_id: UUID, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     return await crud.get_grabaciones_by_caja(db, caja_id, limit=limit)
 
 @app.get("/grabaciones/usuario/{usuario_id}", response_model=List[schemas.Grabacion])
-async def api_get_grabaciones_usuario(usuario_id: UUID, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_grabaciones_usuario(usuario_id: UUID, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     return await crud.get_grabaciones_by_usuario(db, usuario_id, limit=limit)
 
 @app.get("/analisis", response_model=List[schemas.AnalisisGeneral])
-async def api_get_analisis(skip: int = 0, limit: int = 100, db: AsyncSession = Depends(database.get_db)):
+async def api_get_analisis(skip: int = 0, limit: Optional[int] = None, db: AsyncSession = Depends(database.get_db)):
     # We fetch analyses
     return await crud.get_analisis(db)
 
@@ -549,5 +627,5 @@ async def api_get_transcripciones(grabacion_id: UUID, db: AsyncSession = Depends
     return await crud.get_transcripciones(db, grabacion_id)
 
 @app.get("/logs", response_model=schemas.PaginatedLogs)
-async def api_get_logs(skip: int = 0, limit: int = 100, date_filter: Optional[str] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
+async def api_get_logs(skip: int = 0, limit: Optional[int] = None, date_filter: Optional[str] = None, db: AsyncSession = Depends(database.get_db), current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return await crud.get_logs_auditoria(db, skip=skip, limit=limit, date_filter=date_filter)

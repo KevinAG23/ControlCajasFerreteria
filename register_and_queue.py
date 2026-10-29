@@ -89,21 +89,19 @@ def register_and_queue(grabacion_id_str: str, yyyymmdd: str):
     # 3. Encolar en Redis
     print("Conectando a Redis y encolando en RQ...")
     redis_conn = Redis.from_url(REDIS_URL)
-    q_enhance = Queue("enhance", connection=redis_conn)
+    q_whisperx = Queue("whisperx", connection=redis_conn)
     
-    q_enhance.enqueue(
-        "rq_workers.enhance_worker.enhance_job",
+    q_whisperx.enqueue(
+        "whisperx_worker.whisperx_worker.transcribe_job",
         grabacion_id_str,
-        # En el contenedor el path debe apuntar a la ruta mapeada /app/storage/...
-        f"/app/storage/incoming/{yyyymmdd}/{grabacion_id_str}.wav",
         yyyymmdd,
-        job_id=grabacion_id_str,
+        job_id=f"whisperx_{grabacion_id_str}",
         result_ttl=3600,
         ttl=3600,
         failure_ttl=86400,
         job_timeout=1800,  # 30 min
     )
-    print(f"✓ Éxito: Grabación {grabacion_id_str} encolada en la cola de RQ 'enhance'.")
+    print(f"✓ Éxito: Grabación {grabacion_id_str} encolada en la cola de RQ 'whisperx'.")
 
 
 if __name__ == "__main__":

@@ -68,6 +68,17 @@ public partial class SettingsWindow : Window
         {
             CmbMic.SelectedIndex = 0;
         }
+
+        // Estado Operativo local fallback
+        if (Settings.EstadoOperativo == "Operativa") CmbEstado.SelectedIndex = 0;
+        else if (Settings.EstadoOperativo == "En Mantenimiento") CmbEstado.SelectedIndex = 1;
+        else if (Settings.EstadoOperativo == "Fuera de Servicio") CmbEstado.SelectedIndex = 2;
+
+        // Duracion Segmento
+        if (Settings.RecordingDurationMinutes == 10) CmbDuracion.SelectedIndex = 0;
+        else if (Settings.RecordingDurationMinutes == 20) CmbDuracion.SelectedIndex = 1;
+        else if (Settings.RecordingDurationMinutes == 30) CmbDuracion.SelectedIndex = 2;
+        else CmbDuracion.SelectedIndex = 0;
     }
 
     // ===================================================================
@@ -254,6 +265,14 @@ public partial class SettingsWindow : Window
         Settings.TurnoMananaFin    = mf;
         Settings.TurnoTardeInicio  = ti;
         Settings.TurnoTardeFin     = tf;
+
+        if (CmbDuracion.SelectedItem is System.Windows.Controls.ComboBoxItem duracionItem)
+        {
+            if (int.TryParse(duracionItem.Tag?.ToString(), out int val))
+            {
+                Settings.RecordingDurationMinutes = val;
+            }
+        }
 
         _settingsService.Save(Settings);
 

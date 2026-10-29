@@ -239,6 +239,7 @@ C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Rele
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\hostfxr.dll
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\hostpolicy.dll
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\mscordaccore.dll
+C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\mscordaccore_amd64_amd64_8.0.2626.16921.dll
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\mscordbi.dll
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\mscorrc.dll
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\msquic.dll
@@ -473,11 +474,13 @@ C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Rele
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\IndicatorWindow.baml
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\LoginWindow.baml
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\SettingsWindow.baml
+C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\SuccessWindow.baml
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\MainWindow.g.cs
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\ControlWindow.g.cs
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\IndicatorWindow.g.cs
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\LoginWindow.g.cs
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\SettingsWindow.g.cs
+C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\Views\SuccessWindow.g.cs
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\App.g.cs
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\CajaRecorderAgent_MarkupCompile.cache
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\CajaRecorderAgent_MarkupCompile.lref
@@ -492,4 +495,3 @@ C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Rele
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\refint\CajaRecorderAgent.dll
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\CajaRecorderAgent.genruntimeconfig.cache
 C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\obj\Release\net8.0-windows\win-x64\ref\CajaRecorderAgent.dll
-C:\Users\User\Desktop\KEVIN\Flujo_Cajas\desktop_agent\CajaRecorderAgent\bin\Release\net8.0-windows\win-x64\mscordaccore_amd64_amd64_8.0.2626.16921.dll

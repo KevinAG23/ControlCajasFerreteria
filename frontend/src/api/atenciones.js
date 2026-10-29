@@ -8,9 +8,12 @@ const getAuthHeaders = () => {
     return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const getAtencionesByCajero = async (cajeroId) => {
+export const getAtencionesByCajero = async (cajeroId, limit = null) => {
     try {
-        const response = await axios.get(`${NEW_API_URL}/usuarios/${cajeroId}/atenciones`, {
+        const params = new URLSearchParams();
+        if (limit) params.append("limit", limit);
+        const queryString = params.toString() ? `?${params.toString()}` : "";
+        const response = await axios.get(`${NEW_API_URL}/usuarios/${cajeroId}/atenciones${queryString}`, {
             headers: getAuthHeaders()
         });
         return response.data;

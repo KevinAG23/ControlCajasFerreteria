@@ -225,11 +225,22 @@ public class ApiClient
         return body; // si quieres, lo parseamos a DTO, pero para debug es suficiente
     }
 
-    public async Task<PingResult> PingAsync(string cajaId, bool isRecording, string estadoGrabacion)
+    public async Task<PingResult> PingAsync(string cajaId, bool isRecording, string estadoGrabacion, List<string> mics = null, bool? enPausaOverride = null, bool? grabacionHabilitadaOverride = null, string microfonoOverride = null, Dictionary<string, string> horariosOverride = null, int? duracionOverride = null)
     {
         ApplyAuth();
         
-        var payload = new { is_recording = isRecording, estado_grabacion = estadoGrabacion };
+        var payload = new
+        {
+            is_recording = isRecording,
+            estado_grabacion = estadoGrabacion,
+            lista_microfonos = mics,
+            en_pausa_override = enPausaOverride,
+            grabacion_habilitada_override = grabacionHabilitadaOverride,
+            microfono_actual_override = microfonoOverride,
+            horarios_override = horariosOverride,
+            duracion_segmento_minutos_override = duracionOverride,
+            version = "v2.0.0"
+        };
         var json = JsonSerializer.Serialize(payload, _jsonOpts);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -250,8 +261,6 @@ public class ApiClient
             res.EstadoOperativo = estProp.GetString();
         if (doc.RootElement.TryGetProperty("contacto_id", out var conProp))
             res.ContactoId = conProp.GetString() ?? "";
-        if (doc.RootElement.TryGetProperty("estado_grabacion", out var grabProp))
-            res.EstadoGrabacion = grabProp.GetString() ?? "apagado";
         if (doc.RootElement.TryGetProperty("cajero_nombre", out var cajProp))
             res.CajeroNombre = cajProp.GetString() ?? "SIN_ASIGNAR";
         if (doc.RootElement.TryGetProperty("turno_manana_inicio", out var tmInicioProp))
@@ -266,6 +275,10 @@ public class ApiClient
             res.GrabacionHabilitada = habProp.GetBoolean();
         if (doc.RootElement.TryGetProperty("en_pausa", out var pausaProp))
             res.EnPausa = pausaProp.GetBoolean();
+        if (doc.RootElement.TryGetProperty("duracion_segmento_minutos", out var durProp) && durProp.TryGetInt32(out var dur))
+            res.DuracionSegmentoMinutos = dur;
+        if (doc.RootElement.TryGetProperty("microfono_asignado", out var micProp) && micProp.ValueKind != JsonValueKind.Null)
+            res.MicrofonoAsignado = micProp.GetString();
 
         return res;
     }
@@ -283,4 +296,7 @@ public class PingResult
     public string TurnoTardeFin { get; set; } = "19:00:00";
     public bool GrabacionHabilitada { get; set; } = true;
     public bool EnPausa { get; set; } = false;
+    public int DuracionSegmentoMinutos { get; set; } = 10;
+    public string MicrofonoAsignado { get; set; }
+    public bool RequireUpdate { get; set; } = false;
 }

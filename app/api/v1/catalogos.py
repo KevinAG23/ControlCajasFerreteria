@@ -12,6 +12,10 @@ from app.db.models import Usuario, Caja, Rol, Contacto
 
 router = APIRouter()
 
+@router.get("/health")
+async def health_check():
+    return {"status": "ok", "message": "api/v1 is running"}
+
 class CajeroOut(BaseModel):
     id: str
     username: str
@@ -26,6 +30,7 @@ class CajaOut(BaseModel):
     en_uso: bool | None = None
     ultima_conexion: datetime | None = None
     estado_grabacion: str | None = None
+    version_actual: str | None = None
 
 @router.get("/usuarios/cajeros", response_model=list[CajeroOut])
 async def get_cajeros(
@@ -75,6 +80,7 @@ async def get_cajas(
             en_uso=c.en_uso,
             ultima_conexion=c.ultima_conexion,
             estado_grabacion=c.estado_grabacion,
+            version_actual=c.version_actual,
         )
         for c in cajas
     ]
@@ -95,6 +101,7 @@ async def get_todas_cajas(
             en_uso=c.en_uso,
             ultima_conexion=c.ultima_conexion,
             estado_grabacion=c.estado_grabacion,
+            version_actual=c.version_actual,
         )
         for c in cajas
     ]
@@ -102,6 +109,13 @@ async def get_todas_cajas(
 class PingPayload(BaseModel):
     is_recording: bool = False
     estado_grabacion: Optional[str] = None
+    lista_microfonos: Optional[list[str]] = None
+    en_pausa_override: Optional[bool] = None
+    grabacion_habilitada_override: Optional[bool] = None
+    microfono_actual_override: Optional[str] = None
+    horarios_override: Optional[dict] = None
+    duracion_segmento_minutos_override: Optional[int] = None
+    version: Optional[str] = None
 
 @router.post("/cajas/{caja_id}/ping")
 async def ping_caja(
@@ -120,8 +134,34 @@ async def ping_caja(
     db_caja.ultima_conexion = datetime.now(timezone.utc)
     if payload:
         db_caja.en_uso = payload.is_recording
-        if payload.estado_grabacion:
+        if payload.estado_grabacion is not None:
             db_caja.estado_grabacion = payload.estado_grabacion
+        if payload.lista_microfonos is not None:
+            db_caja.lista_microfonos = payload.lista_microfonos
+        if payload.en_pausa_override is not None:
+            db_caja.en_pausa = payload.en_pausa_override
+        if payload.grabacion_habilitada_override is not None:
+            db_caja.grabacion_habilitada = payload.grabacion_habilitada_override
+        if payload.microfono_actual_override is not None:
+            db_caja.microfono_asignado = payload.microfono_actual_override
+        if payload.horarios_override is not None:
+            ho = payload.horarios_override
+            if "turno_manana_inicio" in ho and ho["turno_manana_inicio"]:
+                try: db_caja.turno_manana_inicio = datetime.strptime(ho["turno_manana_inicio"], "%H:%M:%S").time()
+                except: pass
+            if "turno_manana_fin" in ho and ho["turno_manana_fin"]:
+                try: db_caja.turno_manana_fin = datetime.strptime(ho["turno_manana_fin"], "%H:%M:%S").time()
+                except: pass
+            if "turno_tarde_inicio" in ho and ho["turno_tarde_inicio"]:
+                try: db_caja.turno_tarde_inicio = datetime.strptime(ho["turno_tarde_inicio"], "%H:%M:%S").time()
+                except: pass
+            if "turno_tarde_fin" in ho and ho["turno_tarde_fin"]:
+                try: db_caja.turno_tarde_fin = datetime.strptime(ho["turno_tarde_fin"], "%H:%M:%S").time()
+                except: pass
+        if payload.duracion_segmento_minutos_override is not None:
+            db_caja.duracion_segmento_minutos = payload.duracion_segmento_minutos_override
+        if payload.version is not None:
+            db_caja.version_actual = payload.version
 
     await db.commit()
     await db.refresh(db_caja)
@@ -133,8 +173,14 @@ async def ping_caja(
         if contact:
             cajero_nombre = f"{contact.nombre or ''} {contact.apellido or ''}".strip() or "SIN_ASIGNAR"
     
+    # Check version
+    require_update = False
+    if payload and payload.version != "v2.0.0":
+        require_update = True
+    
     return {
         "status": "ok", 
+        "require_update": require_update,
         "caja_id": caja_id, 
         "estado_operativo": db_caja.estado_operativo,
         "estado_grabacion": db_caja.estado_grabacion,
@@ -145,7 +191,9 @@ async def ping_caja(
         "turno_tarde_inicio": db_caja.turno_tarde_inicio.isoformat() if db_caja.turno_tarde_inicio else "16:00:00",
         "turno_tarde_fin": db_caja.turno_tarde_fin.isoformat() if db_caja.turno_tarde_fin else "19:00:00",
         "grabacion_habilitada": db_caja.grabacion_habilitada,
-        "en_pausa": db_caja.en_pausa
+        "en_pausa": db_caja.en_pausa,
+        "duracion_segmento_minutos": db_caja.duracion_segmento_minutos,
+        "microfono_asignado": db_caja.microfono_asignado
     }
 
 class AsignarConfigRequest(BaseModel):
@@ -193,7 +241,7 @@ async def asignar_configuracion(
                     resolved_user_id = user_obj.id
 
     if req.caja_id_nueva:
-        update_data = {"en_uso": True}
+        update_data = {}
         if req.estado_operativo:
             if req.estado_operativo == "Mantenimiento":
                 update_data["estado_operativo"] = "En Mantenimiento"

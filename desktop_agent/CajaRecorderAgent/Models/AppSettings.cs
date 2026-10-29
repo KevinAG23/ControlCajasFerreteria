@@ -30,6 +30,7 @@ public class AppSettings
     public TimeSpan TurnoTardeFin { get; set; } = new(19, 0, 0);
 
     public bool GrabacionHabilitada { get; set; } = true;
+    public int RecordingDurationMinutes { get; set; } = 10;
 
     // Backend — URL del servidor de API
     public string ApiBaseUrl { get; set; } = "";

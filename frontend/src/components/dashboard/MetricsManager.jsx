@@ -9,16 +9,20 @@ import {
     Save,
     X,
     LayoutList,
-    MessageSquare
+    MessageSquare,
+    ToggleLeft,
+    ToggleRight
 } from 'lucide-react';
 import {
     getCategories,
     getQuestions,
     createCategory,
     updateCategory,
+    toggleCategoryActive,
     deleteCategory,
     createQuestion,
     updateQuestion,
+    toggleQuestionActive,
     deleteQuestion
 } from '../../api/metrics';
 import { useCustomDialog } from '../common/CustomDialog';
@@ -45,7 +49,8 @@ export default function MetricsManager() {
         activo: true,
         tipo_respuesta: 'ESCALA_NUMERICA',
         configuracion_respuesta: '{\n  "min": 1,\n  "max": 5\n}',
-        instruccion_ia: 'Evalúa en una escala numérica del 1 al 5.'
+        instruccion_ia: 'Evalúa en una escala numérica del 1 al 5.',
+        ejemplo_respuesta_esperada: ''
     });
 
     const [newOptionText, setNewOptionText] = useState('');
@@ -148,6 +153,7 @@ export default function MetricsManager() {
         if (!isConfirmed) return;
         try {
             await deleteCategory(id);
+            setCategories(prev => prev.filter(c => c.id !== id));
             fetchData();
             await alert({ type: 'success', message: 'Categoría eliminada correctamente' });
         } catch (err) {
@@ -165,8 +171,54 @@ export default function MetricsManager() {
         if (!isConfirmed) return;
         try {
             await deleteQuestion(id);
+            setCategories(prev => prev.map(cat => ({
+                ...cat,
+                preguntas: (cat.preguntas || []).filter(q => q.id !== id)
+            })));
             fetchData();
             await alert({ type: 'success', message: 'Pregunta eliminada correctamente' });
+        } catch (err) {
+            await alert({ type: 'error', message: err.message });
+        }
+    };
+
+    const handleToggleQuestion = async (q, e) => {
+        if (e) e.stopPropagation();
+        const nuevoEstado = q.activo === false ? true : false;
+        try {
+            await toggleQuestionActive(q.id, nuevoEstado);
+            // Optimistically update local state for instantaneous feedback
+            setCategories(prev => prev.map(cat => {
+                if (cat.id !== q.categoria_id) return cat;
+                return {
+                    ...cat,
+                    preguntas: (cat.preguntas || []).map(item => item.id === q.id ? { ...item, activo: nuevoEstado } : item)
+                };
+            }));
+            await alert({ 
+                type: 'success', 
+                message: nuevoEstado 
+                    ? 'Pregunta habilitada. El LLM evaluará esta métrica.' 
+                    : 'Pregunta deshabilitada. El LLM NO evaluará esta métrica.' 
+            });
+        } catch (err) {
+            await alert({ type: 'error', message: err.message });
+        }
+    };
+
+    const handleToggleCategory = async (cat, e) => {
+        if (e) e.stopPropagation();
+        const nuevoEstado = cat.activo === false ? true : false;
+        try {
+            await toggleCategoryActive(cat.id, nuevoEstado);
+            // Optimistically update local state for instantaneous feedback
+            setCategories(prev => prev.map(item => item.id === cat.id ? { ...item, activo: nuevoEstado } : item));
+            await alert({ 
+                type: 'success', 
+                message: nuevoEstado 
+                    ? 'Métrica (Categoría) habilitada. El LLM evaluará las preguntas de esta métrica.' 
+                    : 'Métrica (Categoría) deshabilitada. El LLM NO evaluará las preguntas de esta métrica.' 
+            });
         } catch (err) {
             await alert({ type: 'error', message: err.message });
         }
@@ -202,6 +254,19 @@ export default function MetricsManager() {
                 return;
             }
 
+            payload.categoria_id = String(payload.categoria_id).trim();
+            payload.peso_puntaje = parseInt(payload.peso_puntaje, 10) || 1;
+            if (!payload.instruccion_ia || payload.instruccion_ia.trim() === '') {
+                payload.instruccion_ia = null;
+            } else {
+                payload.instruccion_ia = payload.instruccion_ia.trim();
+            }
+            if (!payload.ejemplo_respuesta_esperada || payload.ejemplo_respuesta_esperada.trim() === '') {
+                payload.ejemplo_respuesta_esperada = null;
+            } else {
+                payload.ejemplo_respuesta_esperada = payload.ejemplo_respuesta_esperada.trim();
+            }
+
             if (editingQuestion) {
                 await updateQuestion(editingQuestion.id, payload);
             } else {
@@ -217,7 +282,8 @@ export default function MetricsManager() {
                 activo: true,
                 tipo_respuesta: 'ESCALA_NUMERICA',
                 configuracion_respuesta: '{\n  "min": 1,\n  "max": 5\n}',
-                instruccion_ia: 'Evalúa en una escala numérica del 1 al 5.'
+                instruccion_ia: 'Evalúa en una escala numérica del 1 al 5.',
+                ejemplo_respuesta_esperada: ''
             });
             fetchData();
             await alert({ type: 'success', message: 'Pregunta guardada correctamente' });
@@ -249,7 +315,8 @@ export default function MetricsManager() {
                 activo: question.activo !== false,
                 tipo_respuesta: question.tipo_respuesta || 'ESCALA_NUMERICA',
                 configuracion_respuesta: question.configuracion_respuesta ? JSON.stringify(question.configuracion_respuesta, null, 2) : '{}',
-                instruccion_ia: question.instruccion_ia || ''
+                instruccion_ia: question.instruccion_ia || '',
+                ejemplo_respuesta_esperada: question.ejemplo_respuesta_esperada || ''
             });
         } else {
             setEditingQuestion(null);
@@ -260,7 +327,8 @@ export default function MetricsManager() {
                 activo: true,
                 tipo_respuesta: 'ESCALA_NUMERICA',
                 configuracion_respuesta: '{\n  "min": 1,\n  "max": 5\n}',
-                instruccion_ia: 'Evalúa en una escala numérica del 1 al 5.'
+                instruccion_ia: 'Evalúa en una escala numérica del 1 al 5.',
+                ejemplo_respuesta_esperada: ''
             });
         }
         setIsQuestionModalOpen(true);
@@ -325,14 +393,55 @@ export default function MetricsManager() {
                                         {expandedCategory === cat.id ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
                                     </div>
                                     <div>
-                                        <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '600', color: '#1f2937' }}>{cat.nombre}</h3>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '600', color: cat.activo !== false ? '#1f2937' : '#9ca3af', textDecoration: cat.activo === false ? 'line-through' : 'none' }}>
+                                                {cat.nombre}
+                                            </h3>
+                                            {cat.activo === false && (
+                                                <span style={{ padding: '0.2rem 0.6rem', borderRadius: '6px', backgroundColor: '#fef3c7', color: '#b45309', fontSize: '0.72rem', fontWeight: '700' }}>
+                                                    DESHABILITADA (LLM)
+                                                </span>
+                                            )}
+                                        </div>
                                         <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                                             {cat.preguntas ? cat.preguntas.length : 0} preguntas definidas
                                         </p>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                    {/* Botón para Activar / Desactivar la métrica completa (Categoría) para el LLM */}
+                                    <button
+                                        onClick={(e) => handleToggleCategory(cat, e)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.4rem',
+                                            padding: '0.45rem 0.85rem',
+                                            borderRadius: '8px',
+                                            border: `1.5px solid ${cat.activo !== false ? '#bbf7d0' : '#e2e8f0'}`,
+                                            background: cat.activo !== false ? '#f0fdf4' : '#f8fafc',
+                                            color: cat.activo !== false ? '#15803d' : '#64748b',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                        title={cat.activo !== false ? "Haga clic para deshabilitar del LLM" : "Haga clic para habilitar en el LLM"}
+                                    >
+                                        {cat.activo !== false ? (
+                                            <>
+                                                <ToggleRight size={20} color="#16a34a" />
+                                                <span>Métrica Activa (LLM)</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <ToggleLeft size={20} color="#94a3b8" />
+                                                <span>Métrica Inactiva</span>
+                                            </>
+                                        )}
+                                    </button>
+
                                     <button
                                         onClick={(e) => openCategoryModal(cat, e)}
                                         style={{ padding: '0.5rem', borderRadius: '8px', border: 'none', background: 'transparent', color: '#4f46e5', cursor: 'pointer' }}
@@ -396,7 +505,39 @@ export default function MetricsManager() {
                                                                 </span>
                                                             </div>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            {/* Botón para Activar / Desactivar la métrica para el LLM */}
+                                                            <button
+                                                                onClick={(e) => handleToggleQuestion(q, e)}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.35rem',
+                                                                    padding: '0.35rem 0.7rem',
+                                                                    borderRadius: '8px',
+                                                                    border: `1.5px solid ${q.activo !== false ? '#bbf7d0' : '#e2e8f0'}`,
+                                                                    background: q.activo !== false ? '#f0fdf4' : '#f8fafc',
+                                                                    color: q.activo !== false ? '#15803d' : '#64748b',
+                                                                    fontSize: '0.78rem',
+                                                                    fontWeight: '700',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.15s ease'
+                                                                }}
+                                                                title={q.activo !== false ? "Haga clic para deshabilitar del LLM" : "Haga clic para habilitar en el LLM"}
+                                                            >
+                                                                {q.activo !== false ? (
+                                                                    <>
+                                                                        <ToggleRight size={18} color="#16a34a" />
+                                                                        <span>Habilitada (LLM)</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <ToggleLeft size={18} color="#94a3b8" />
+                                                                        <span>Deshabilitada</span>
+                                                                    </>
+                                                                )}
+                                                            </button>
+
                                                             <button
                                                                 onClick={() => openQuestionModal(cat, q)}
                                                                 style={{ padding: '0.4rem', borderRadius: '6px', border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer' }}
@@ -544,7 +685,7 @@ export default function MetricsManager() {
                             <div style={{ marginBottom: '1.25rem' }}>
                                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>Instrucción IA (Opcional)</label>
                                 <textarea
-                                    value={questionForm.instruccion_ia}
+                                    value={questionForm.instruccion_ia || ''}
                                     onChange={(e) => {
                                         setQuestionForm({ ...questionForm, instruccion_ia: e.target.value });
                                         e.target.style.height = 'auto';
@@ -553,6 +694,17 @@ export default function MetricsManager() {
                                     rows="1"
                                     placeholder="Instrucciones para la evaluación del LLM..."
                                     style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem', resize: 'none', overflow: 'hidden', minHeight: '45px', height: questionForm.tipo_respuesta === 'OPCION_MULTIPLE' ? '80px' : '60px', maxHeight: '150px', overflowY: 'auto' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '1.25rem' }}>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#374151' }}>Ejemplo de Respuesta Esperada (Opcional)</label>
+                                <input
+                                    type="text"
+                                    value={questionForm.ejemplo_respuesta_esperada || ''}
+                                    onChange={(e) => setQuestionForm({ ...questionForm, ejemplo_respuesta_esperada: e.target.value })}
+                                    placeholder="Ej: Buenos días, bienvenido a la tienda / ¿Desea factura o boleta?"
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '0.9rem' }}
                                 />
                             </div>
 

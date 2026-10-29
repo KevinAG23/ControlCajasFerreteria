@@ -24,6 +24,28 @@ audios/
 *.tar
 *.log
 
+# Build outputs (.NET & executables)
+obj/
+bin/
+publish*/
+desktop_agent/**/obj/
+desktop_agent/**/bin/
+desktop_agent/**/publish*/
+desktop_agent/PruebaEjecutable/
+desktop_agent/CajaApp-*/
+*.wpftmp*
+*_wpftmp*
+PublishOutputs.*
+
+# Temporary patch & test scripts
+apply_*_patch.py
+patch*.py
+fix_*.py
+test_db.py
+count_divs.js
+sucursal_table.txt
+scratch/
+
 # OS metadata
 .DS_Store
 Thumbs.db
